@@ -109,5 +109,5 @@
             {% for day_log in activity %}{"date": moment("{{ day_log.date }}", "YYYY-MM-DD").toDate(), "count": {% if day_log.game_count > 0 %}1{% else %}0{% endif %}}, {% endfor %}
         ];
     </script>
-    <script src="{% static 'js/statistics.js' %}"></script>
+    <script src="{% static 'js/../../static/js/../../static/js/statistics.js' %}"></script>
 {% endblock %}

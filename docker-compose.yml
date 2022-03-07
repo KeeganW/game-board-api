@@ -1,0 +1,32 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres
+    volumes:
+      - ./data/db:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_NAME=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - DEBUG_USER=root
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - ./app:/code
+    ports:
+      - "8000:8000"
+    environment:
+      - DBNAME=postgres
+      - DBUSER=postgres
+      - DBPASS=postgres
+      - DBHOST=db
+      - DBPORT=5432
+      - SECRET_KEY="thisisasupersecretkeydefinitelynotunsafe"
+    depends_on:
+      - db

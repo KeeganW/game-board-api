@@ -40,29 +40,31 @@ CACHES = {
     }
 }
 
-# TODO Comment IN for production deployment
-# WSGI_APPLICATION = 'webapps.wsgi.application'
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.postgresql',
-#         'NAME': os.environ['DBNAME'],
-#         'HOST': os.environ['DBHOST'],
-#         'USER': os.environ['DBUSER'],
-#         'PASSWORD': os.environ['DBPASS'],
-#         'OPTIONS': {
-#             'sslmode':'require'
-#         }
-#     }
-# }
+WSGI_APPLICATION = 'webapps.wsgi.application'
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': os.environ['DBNAME'],
+        'USER': os.environ['DBUSER'],
+        'PASSWORD': os.environ['DBPASS'],
+        'HOST': os.environ['DBHOST'],
+        'PORT': 5432,  # os.environ['DBPORT'],
+        # TODO Comment IN for production deployment
+        # 'OPTIONS': {
+        #     'sslmode':'require'
+        # },
+    }
+}
 
 # TODO Comment OUT for production deployment!
 DEBUG = True
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
-    }
-}
+ALLOWED_HOSTS = ['*']
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.sqlite3',
+#         'NAME': os.path.join(BASE_DIR, '../../db.sqlite3'),
+#     }
+# }
 
 
 ALLOWED_HOSTS = [os.environ['WEBSITE_SITE_NAME'], '127.0.0.1', 'localhost'] if 'WEBSITE_SITE_NAME' in os.environ else ['127.0.0.1', 'localhost']
