@@ -2,18 +2,15 @@
 Game board is an application for tracking games played with your friend groups, and viewing their results in interesting ways. 
 
 # Running Game Board
-In order to run this application, follow the following directions to run the game on your local machine.
+In order to run this application, follow the following directions to run the game on your local machine. This assumes you have [docker](https://docs.docker.com/get-docker/) installed.
 
 ## First Time Setup
 1. Clone the repository
     - `git clone https://github.com/KeeganW/game-board.git && cd game-board`
-2. Install the requirements (it is recommended you do this inside a virtual environment. See [Configuring your local environment](https://github.com/KeeganW/game-board/wiki/Configuring-Your-Local-Environment))
-    - `pip install -r requirements.txt`
-3. Setup your local variables
-    - `export SECRET_KEY="$(cat /dev/urandom | env LC_CTYPE=C tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)"`
-    - (optional, if running on a remote server) `export WEBSITE_SITE_NAME="<this machine's full dns name>"`
-4. Create your database
-    - `python manage.py makemigrations gameboard && python manage.py migrate --run-syncdb`
+2. Run docker (note, you may need to run this twice after the database is made after initial run.)
+   - `docker-compose up -d`
+3. Create your database
+    - `docker exec -it game-board-web-1 python manage.py makemigrations gameboard && docker exec -it game-board-web-1 python manage.py migrate --run-syncdb`
 
 ## Running the website
 1. Run the web server.

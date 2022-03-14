@@ -11,8 +11,7 @@ from django.core.cache import cache
 from gameboard.forms import LoginForm, RegisterForm, AddRoundForm, EditForm, EditGroupForm, AddGameForm
 from gameboard.helpers.import_helper import ImportScores, ExportScores
 from gameboard.helpers.queries import *
-from gameboard.models import Player, Round, Game, Group
-
+from gameboard.models import Player, Round, Game, Group, PlayerRank
 
 """ Helper functions """
 
@@ -369,7 +368,7 @@ def add_round(request):
             game = add_round_form.cleaned_data.get('game')
             date = add_round_form.cleaned_data.get('date')
             players = add_round_form.cleaned_data.get('players').split(",")
-            winners = add_round_form.cleaned_data.get('winners').split(",")
+            ranks = add_round_form.cleaned_data.get('ranks').split(",")
 
             # Valid, so add the new game played object
             game_played = Round()
@@ -378,10 +377,14 @@ def add_round(request):
             game_played.group = group
             game_played.save()
 
-            for player in players:
-                game_played.players.add(Player.objects.get(user__username__exact=player))
-            for winner in winners:
-                game_played.winners.add(Player.objects.get(user__username__exact=winner))
+            for player_index in range(len(players)):
+                try:
+                    rank = int(ranks[player_index])
+                except ValueError:
+                    rank = None
+                player_rank = PlayerRank(player=Player.objects.get(user__username__exact=players[player_index]), rank=rank)
+                player_rank.save()
+                game_played.players.add(player_rank)
 
             clear_cache(gb_user.primary_group)
 

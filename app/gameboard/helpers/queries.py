@@ -18,8 +18,8 @@ def find_win_percentage(player):
     """
     percentage = 0
     if player:
-        games_played = Round.objects.filter(players__user=player.user)
-        wins = Round.objects.filter(winners__user=player.user)
+        games_played = search_games_by_player(player)
+        wins = search_wins_by_player(player)
         if len(games_played) > 0:
             percentage = (len(wins)/len(games_played)) * 100
     return percentage
@@ -36,7 +36,7 @@ def find_favorite_game(player):
     if player.favorite_game:
         return player.favorite_game
     if player:
-        games_played = Round.objects.filter(players__user=player.user)
+        games_played = search_games_by_player(player)
         game_dict = dict()
         for g in games_played:
             if g.game.name not in game_dict:
@@ -84,7 +84,7 @@ def find_groups(player):
     :param player: A Player object, which contains the user info
     :return: A queryset of group objects the player belongs to
     """
-    group = Group.objects.filter(players__user=player.user)
+    group = Group.objects.filter(player__user=player.user)
 
     return group
 
@@ -145,7 +145,7 @@ def find_oldest_date():
 
 
 def search_wins_by_player(player):
-    return Round.objects.filter(winners__user=player.user)
+    return Round.objects.filter(players__player__user=player.user, players__rank__exact=1)
 
 
 def search_wins_by_player_in_time(player, date_start, date_end):
@@ -153,7 +153,7 @@ def search_wins_by_player_in_time(player, date_start, date_end):
 
 
 def search_games_by_player(player):
-    return Round.objects.filter(players__user=player.user)
+    return Round.objects.filter(players__player__user=player.user)
 
 
 def search_games_by_player_in_time(player, date_start, date_end):

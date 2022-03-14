@@ -184,6 +184,12 @@ body {
     filter: invert(1);
 }
 
+/* Adding Round */
+.winners {
+    margin-left: 10px;
+    width: 75px;
+}
+
 /* Player Statistics */
 .statistics-item {
     margin: 5px 0px;

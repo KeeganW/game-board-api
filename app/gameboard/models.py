@@ -1,3 +1,4 @@
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
 from django.contrib.auth.models import User
@@ -44,19 +45,56 @@ class Group(models.Model):
         return str(self.name)
 
 
+def validate_rank_more_than_zero(value: int):
+    """
+    Ensure value is more than zero for ranking players.
+    :param value: A positive integer > 0
+    :return: value
+    """
+    if value >= 1:
+        return value
+    else:
+        raise ValidationError("This field must be >= 1")
+
+
+class PlayerRank(models.Model):
+    """
+    When a player is ranked in a game, their placement will be quantified by this class.
+
+    A null rank means that the player either did not finish, or the game only supports winners and the others are not
+    ranked.
+    """
+    player = models.ForeignKey(Player, related_name='game_player', on_delete=models.CASCADE)
+    rank = models.IntegerField(null=True, validators=[validate_rank_more_than_zero])
+
+    def __str__(self):
+        return str("{}={}".format(self.player, self.rank))
+
+
 class Round(models.Model):
     """
-    When a group plays a game, they will create a new instance of this class. This stores all of the relevant
+    When a group plays a game, they will create a new instance of this class. This stores all the relevant
     information about who played the game, who won, and the game played.
     """
     game = models.ForeignKey(Game, on_delete=models.CASCADE)
     date = models.DateField(default=timezone.now().strftime("%Y-%m-%d"))
-    winners = models.ManyToManyField(Player, related_name='game_winners')
-    players = models.ManyToManyField(Player, related_name='game_players')
+    players = models.ManyToManyField(PlayerRank, related_name='game_players')
     group = models.ForeignKey(Group, on_delete=models.CASCADE)
 
+    def winners(self):
+        player_ids = self.players.filter(rank__exact=1).values_list('player', flat=True)
+        return Player.objects.filter(user_id__in=list(player_ids))
+
+    def placed_players(self):
+        player_ids = self.players.filter(rank__gt=0).values_list('player_id', flat=True)
+        return Player.objects.filter(user_id__in=list(player_ids))
+
+    def all_players(self):
+        player_ids = self.players.values_list('player_id', flat=True)
+        return Player.objects.filter(user_id__in=list(player_ids))
+
     def __str__(self):
-        return str("{}, {}: {}, {}".format(self.game, self.date, self.players.all(), self.winners.all()))
+        return str("{}, {}: {}".format(self.game, self.date, self.players.all()))
 
 
 class StatisticType(models.Model):

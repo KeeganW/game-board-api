@@ -6,7 +6,7 @@ from django.contrib.auth.models import User
 from gameboardapp.settings import STATIC_ROOT, PROJECT_ROOT, BASE_DIR, APP_ROOT, MEDIA_ROOT
 from datetime import datetime
 from django.db import IntegrityError
-from gameboard.models import Game, Round, Player, Group
+from gameboard.models import Game, Round, Player, Group, PlayerRank
 
 
 class ImportScores:
@@ -23,7 +23,7 @@ class ImportScores:
     first_player_loc = 3
 
     # Storing the player information
-    players = []
+    players = {}
 
     def __init__(self):
         """
@@ -52,6 +52,7 @@ class ImportScores:
         Player.objects.all().delete()
         Game.objects.all().delete()
         Round.objects.all().delete()
+        PlayerRank.objects.all().delete()
         Group.objects.all().delete()
 
     def add_players(self):
@@ -68,14 +69,13 @@ class ImportScores:
             # Get the first line
             reader = csv.reader(f)
             people = next(reader)
-            self.players = people[self.first_player_loc:]
-            group = Group(name="TAS and Friends")
+            new_players = people[self.first_player_loc:]
+            group = Group(name="Sample Group")
             group.save()
 
             # Loop over those players
-            for player in self.players:
-                # try:
-                print(player)
+            for player in new_players:
+                print(f"Adding player: {player}")
                 # Set the user object
                 username = player.replace(" ", "")
                 u = User(first_name=player, last_name="", username=username)
@@ -87,11 +87,10 @@ class ImportScores:
                 p = Player(user=u, date_of_birth=datetime.now(), primary_group=group)
                 p.save()
 
+                self.players[player] = p
+
                 group.players.add(p)
                 group.admins.add(p)
-                # except IntegrityError:
-                #     print("Player object exists already.")
-                #     pass
             return group
 
     def add_games(self):
@@ -126,7 +125,8 @@ class ImportScores:
         with open(self.dataset, newline='') as f:
             # Open the csv, and read through every line (but the header)
             reader = csv.reader(f)
-            next(reader)  # skip header line
+            people = next(reader)
+            new_players = people[self.first_player_loc:]
 
             for line in reader:
                 # Get the game (if it is not there, ignore this line)
@@ -134,7 +134,6 @@ class ImportScores:
                 if len(game) > 0:
                     # Set local variables
                     players = list()
-                    winners = list()
 
                     # Get the date the game was played on
                     date = datetime.strptime(line[self.date_loc], "%m/%d/%y")
@@ -145,27 +144,27 @@ class ImportScores:
                     # Loop through all the players who played
                     for player_index in range(len(player_stats)):
                         # Get their names, and the wins they had
-                        player = self.players[player_index]
                         player_stat = player_stats[player_index]
 
                         if player_stat != "":
                             # Actually played in this game
-                            players.append(player)
+                            player_name = new_players[player_index]
+                            player = self.players[player_name]
 
-                            # Check if they won this game
-                            if player_stat == "1":
-                                winners.append(player)
+                            # Create a rank object, and get it setup to add
+                            rank = PlayerRank(player=player, rank=1 if player_stat == "1" else None)
+                            players.append(rank)
 
-                    self.enter_game_played(players, winners, game, date, group)
+                    self.enter_game_played(players, game, date, group)
 
-    def enter_game_played(self, players_names, winners_names, game, date, group):
+    def enter_game_played(self, players, game, date, group):
         """
         Actually adds the game played to the database, linking to Player objects and Game objects.
 
-        :param players_names: The names of the players
-        :param winners_names: The names of the winners of the game
+        :param players: The names of the players
         :param game: The game that was played (string)
         :param date: A date object to use for when the game was played
+        :param group: Which group this game was played with
         :return: None
         """
         try:
@@ -175,10 +174,9 @@ class ImportScores:
             game_played.group = group
             game_played.save()
 
-            for player in players_names:
-                game_played.players.add(Player.objects.get(user__username__exact=player))
-            for winner in winners_names:
-                game_played.winners.add(Player.objects.get(user__username__exact=winner))
+            for player in players:
+                player.save()
+                game_played.players.add(player)
         except:
             print("Error entering game", game)
             pass

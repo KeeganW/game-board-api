@@ -29,11 +29,11 @@ class AddRoundForm(forms.Form):
     )
     player = forms.CharField(label='Player:', required=False, max_length=50)
     players = forms.CharField(widget=forms.HiddenInput(), required=False)
-    winners = forms.CharField(widget=forms.HiddenInput(), required=False)
+    ranks = forms.CharField(widget=forms.HiddenInput(), required=False)
 
     class Meta:
         model = Round
-        fields = ('game', 'date', 'players', 'winners')
+        fields = ('game', 'date', 'players', 'ranks')
 
     def __init__(self, *args, **kwargs):
         """
@@ -59,14 +59,14 @@ class AddRoundForm(forms.Form):
         game = cleaned_data.get('game')
         date = cleaned_data.get('date')
         players = cleaned_data.get('players')
-        winners = cleaned_data.get('winners')
+        ranks = cleaned_data.get('ranks')
 
-        print(players)
+        print(cleaned_data)
 
         if game:
             if date:
                 if players:
-                    if winners:
+                    if ranks:
                         # TODO Everything exists, validate the content.
                         # Does the game exist?
                         # Is the date within the last year?
@@ -77,7 +77,7 @@ class AddRoundForm(forms.Form):
                         # Everything works!
                         return cleaned_data
 
-                    raise forms.ValidationError("Winners are required")
+                    raise forms.ValidationError("Ranks are required")
                 raise forms.ValidationError("Participating players are required")
             raise forms.ValidationError("Date is required")
         raise forms.ValidationError("Game name is required")
