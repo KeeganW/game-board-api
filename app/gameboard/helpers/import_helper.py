@@ -2,6 +2,7 @@ import csv
 import os
 
 from django.contrib.auth.models import User
+from django.db.models import QuerySet
 
 from gameboardapp.settings import STATIC_ROOT, PROJECT_ROOT, BASE_DIR, APP_ROOT, MEDIA_ROOT
 from datetime import datetime
@@ -14,7 +15,11 @@ class ImportScores:
     Imports scores form a custom formatted csv (stored as a static file).
     """
     # The csv file to get data from
-    dataset = os.path.join(STATIC_ROOT, 'dataset.csv')
+    # dataset_name = 'dataset2'
+    dataset_name = 'dataset3'
+    dataset = os.path.join(STATIC_ROOT, dataset_name + '.csv')
+
+    version = int(dataset_name[-1])
 
     # Specific locations of columns within the csv
     date_loc = 0
@@ -34,14 +39,17 @@ class ImportScores:
         # Wipe the db
         self.wipe_db()
 
-        # Add all players from dataset
-        group = self.add_players()
+        if self.dataset_name[0:7] == 'dataset':
+            # Add all players from dataset
+            group = self.add_players()
 
-        # Add all games from the dataset
-        self.add_games()
+            # Add all games from the dataset
+            self.add_games()
 
-        # Create the games played for this group
-        self.add_game_played(group)
+            # Create the games played for this group
+            self.add_game_played(group)
+        else:
+            self.import_special()
 
     def wipe_db(self):
         """
@@ -49,11 +57,71 @@ class ImportScores:
 
         :return: None
         """
-        Player.objects.all().delete()
-        Game.objects.all().delete()
-        Round.objects.all().delete()
-        PlayerRank.objects.all().delete()
-        Group.objects.all().delete()
+        self.delete_helper(Player.objects.all())
+        self.delete_helper(User.objects.all())
+        self.delete_helper(Game.objects.all())
+        self.delete_helper(Round.objects.all())
+        self.delete_helper(PlayerRank.objects.all())
+        self.delete_helper(Group.objects.all())
+
+    @staticmethod
+    def delete_helper(objects: QuerySet):
+        for obj in objects:
+            obj.delete()
+
+
+    def import_special(self):
+        all_data = []
+        with open(self.dataset, newline='') as f:
+            # Get the first line
+            reader = csv.reader(f)
+            for line in reader:
+                all_data.append(line)
+
+        export_location = os.path.join(STATIC_ROOT, 'backup.csv')
+        players = []
+        with open(export_location, mode='w') as f:
+            f_write = csv.writer(f, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+            headers = ['Date', 'Game', 'Coop']
+            for line in all_data:
+                headers.append(line[0])
+                headers.append(line[0] + '_scores')
+            players = headers[3:]
+            f_write.writerow(headers)
+
+        # calculate games and scores
+        games = {}
+        for line in all_data:
+            player = line.pop(0)
+            # remove real name
+            line.pop(0)
+
+            # Now in sets of 4, we want to continue to pop for game, place, score, date
+            while len(line) > 0:
+                date = line.pop()
+                score = line.pop()
+                rank = line.pop()
+                game = line.pop()
+                if game != '':
+                    game_id = game + '|:|' + date
+                    # Now add it to our games dictionary
+                    try:
+                        games[game_id].append([player, rank, score])
+                    except KeyError:
+                        games[game_id] = [[player, rank, score]]
+
+        with open(export_location, mode='a+') as f:
+            f_write = csv.writer(f, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+            for game_id, ranks in games.items():
+                game, date = game_id.split('|:|')
+                line = [''] * (len(players) + 1)  # +1 for the coop slot
+                line.insert(0, game)
+                line.insert(0, date)
+                for [player, rank, score] in ranks:
+                    line_index = players.index(player) + 3
+                    line[line_index] = rank
+                    line[line_index + 1] = score
+                f_write.writerow(line)
 
     def add_players(self):
         """
@@ -70,6 +138,9 @@ class ImportScores:
             reader = csv.reader(f)
             people = next(reader)
             new_players = people[self.first_player_loc:]
+            if self.version > 1:
+                # Remove odd indexes (scores)
+                new_players = [v for i, v in enumerate(new_players) if i % 2 == 0]
             group = Group(name="Sample Group")
             group.save()
 
@@ -138,26 +209,39 @@ class ImportScores:
                     # Get the date the game was played on
                     date = datetime.strptime(line[self.date_loc], "%m/%d/%y")
 
-                    # Get the players (and their win counts) that played on that day
+                    # Get the players placements (and their scores) that played in that round
                     player_stats = line[self.first_player_loc:]
 
                     # Loop through all the players who played
                     for player_index in range(len(player_stats)):
-                        # Get their names, and the wins they had
-                        player_stat = player_stats[player_index]
+                        # We only want to process the names of the players
+                        if player_index % 2 == 0:
+                            # Get their names, and the wins they had
+                            player_stat = player_stats[player_index]
 
-                        if player_stat != "":
-                            # Actually played in this game
-                            player_name = new_players[player_index]
-                            player = self.players[player_name]
+                            # Check whether this player played. "" = didn't, anything else = did
+                            if player_stat != "":
+                                player_name = new_players[player_index]
+                                player = self.players[player_name]
 
-                            # Create a rank object, and get it setup to add
-                            rank = PlayerRank(player=player, rank=1 if player_stat == "1" else None)
-                            players.append(rank)
+                                # Create a rank object, and get it setup to add
+                                try:
+                                    player_placement = None if player_stat == "0" else int(player_stat)
+                                except ValueError:  # TODO(keegan): Is this correct for int conversion?
+                                    player_placement = None
+
+                                # TODO add in self.version check for scores
+                                try:
+                                    player_score = int(player_stats[player_index + 1])
+                                except ValueError:  # TODO(keegan): Is this correct for int conversion?
+                                    player_score = None
+                                rank = PlayerRank(player=player, rank=player_placement, score=player_score)
+                                players.append(rank)
 
                     self.enter_game_played(players, game, date, group)
 
-    def enter_game_played(self, players, game, date, group):
+    @staticmethod
+    def enter_game_played(players, game, date, group):
         """
         Actually adds the game played to the database, linking to Player objects and Game objects.
 

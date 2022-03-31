@@ -241,9 +241,10 @@ def player(request, player=None, message=None):
     # Add additional data based on the request.
     end_path = request.path_info.split('/')
     if len(end_path) > 1 and end_path[-2] == 'statistics':
-        win_log, rate_log = find_player_monthly_log(player)
+        win_log, rate_log, ranks_log = find_player_monthly_log(player)
         data["win_time"] = win_log
         data["rate_time"] = rate_log
+        data["rank_time"] = ranks_log
         favorites, game_rate_log = favorite_games(player)
         data["favorite"] = favorites
         data["win_game"] = game_rate_log
@@ -301,6 +302,7 @@ def player(request, player=None, message=None):
         # primary_group = passed on via player object
         data['favorite_game'] = find_favorite_game(player)
         data['win_rate'] = find_win_percentage(player)
+        data['average_placement'] = find_average_placement(player)
         # playing_since = passed on via player object
 
         return render(request, "player/profile.html", data)
@@ -369,6 +371,7 @@ def add_round(request):
             date = add_round_form.cleaned_data.get('date')
             players = add_round_form.cleaned_data.get('players').split(",")
             ranks = add_round_form.cleaned_data.get('ranks').split(",")
+            scores = add_round_form.cleaned_data.get('scores').split(",")
 
             # Valid, so add the new game played object
             game_played = Round()
@@ -382,7 +385,11 @@ def add_round(request):
                     rank = int(ranks[player_index])
                 except ValueError:
                     rank = None
-                player_rank = PlayerRank(player=Player.objects.get(user__username__exact=players[player_index]), rank=rank)
+                try:
+                    score = int(scores[player_index])
+                except ValueError:
+                    score = None
+                player_rank = PlayerRank(player=Player.objects.get(user__username__exact=players[player_index]), rank=rank, score=score)
                 player_rank.save()
                 game_played.players.add(player_rank)
 

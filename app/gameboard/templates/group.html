@@ -22,7 +22,7 @@
                     <tr>
                         <td>{{ round.date }}</td>
                         <td>{{ round.game.name }}</td>
-                        <td>{{ round.winners.all|join:", " }}</td>
+                        <td>{{ round.winners|join:", " }}</td>
                         <td><button type="button" class="btn btn-outline-primary" onclick='gameInfo("{{ round.game.name }}", "{{ round.date }}", "{{ round.players.all|join:", " }}", "{{ round.winners.all|join:", " }}");'>Info</button></td>
                         {% if player in player.primary_group.admins.all %}<td><button type="button" class="btn btn-outline-danger" onclick='deleteGame({{ round.id }});'>X</button></td>{% endif %}
                     </tr>
@@ -52,6 +52,28 @@
 {% block scripts %}
     <script>
         function gameInfo(gameName, date, players, winners) {
+            const players_split = players.split(', ')
+            console.log(players_split)
+            const playerRanks = players_split.map(player => {
+                const playerSplit = player.split('=');
+                const maybeScores = playerSplit[1].split('(')
+                if (maybeScores.length === 1) {
+                    return [playerSplit[0], playerSplit[1]]
+                } else {
+                    return [playerSplit[0], maybeScores[0], maybeScores[1].substring(0, maybeScores[1].length - 1)]
+                }
+            }).sort((player1, player2) => {
+                // TODO(keegan): surround with try catch clause
+                const player1Value = player1[1] === 'DNF' ? 1000 : parseInt(player1[1])
+                const player2Value = player2[1] === 'DNF' ? 1000 : parseInt(player2[1])
+                return player1Value - player2Value
+            })
+            let playerRanksHTML = ''
+            for (let player of playerRanks) {
+                const rankAndScore = player.length > 2 ? player[1] + ' (' + player[2] + ')' : player[1]
+                playerRanksHTML += '' +
+                    '<div>' + player[0] + ': ' + rankAndScore + '</div>\n'
+            }
             let modal = $("#modal-content-info");
             let content = '' +
                 '<div class="modal-header">\n' +
@@ -62,8 +84,7 @@
                 '</div>\n' +
                 '<div class="modal-body">\n' +
                 '    <p><strong>Date: </strong>' + date + '</p>\n' +
-                '    <p><strong>Players: </strong>' + players + '</p>\n' +
-                '    <p><strong>Winner(s): </strong>' + winners + '</p>\n' +
+                '    <p><strong>Placements: </strong>' + playerRanksHTML + '</p>\n' +
                 '</div>\n' +
                 '<div class="modal-footer">\n' +
                 '    <button type="button" class="btn btn-primary" data-dismiss="modal">Close</button>\n' +

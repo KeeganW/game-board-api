@@ -51,6 +51,7 @@
                     </div>
                     {{ add_round_form.players }}
                     {{ add_round_form.ranks }}
+                    {{ add_round_form.scores }}
 
                     <div class="winners-title">
                         <div class="row justify-content-center">
@@ -89,6 +90,7 @@
         let idMap = [{% for item in all_players %}"{{ item.user.id }}",{% endfor %}];
         var players = [];
         var ranks = [];
+        var scores = [];
 
         autocomplete(document.getElementById("id_game"), all_games);
         autocomplete(document.getElementById("id_player"), all_players);
@@ -101,10 +103,11 @@
                     '<input type="hidden" name="players_ids" value="' + id + '">' +
                     '<label class="list-group-item list-group-item-dark list-group-item-action" for="select-' + id + '">' +
                         name +
-                        '<select class="custom-select winners" aria-label="Default select example" id="select-' + id + '" name="placement">' +
+                        '<select class="custom-select ranks" aria-label="Default select example" id="select-' + id + '" name="rank">' +
                             '<option value="">DNF</option>' +
                             {% for item in all_players %} '<option value="{{ forloop.counter }}">{{ forloop.counter }}</option>' + {% endfor %}
                         '</select>' +
+                        '<input type="text" class="custom-select scores" name="score" placeholder="Score...">' +
                         '<button class="close" aria-label="Close" name="close" value="' + id + '" onclick="removePlayer(' + id + ')">' +
                             '<span aria-hidden="true">&times;</span>' +
                         '</button>' +
@@ -125,6 +128,7 @@
             $("#players-list").empty();
             players = [];
             ranks = [];
+            scores = [];
         }
 
         $("form button[type=submit]").click(function() {
@@ -139,13 +143,18 @@
             let button_clicked = $("button[type=submit][clicked=true]").val();
 
             // Get winners information
-            ranks = $('.winners').map(function() {
+            ranks = $('.ranks').map(function() {
                 return this.value;
             }).get();
+            scores = $('.scores').map(function() {
+                return this.value;
+            }).get();
+            console.log(scores)
 
             // Store missing values in the form
             $("#id_players").val(players.toString());
             $("#id_ranks").val(ranks.toString());
+            $("#id_scores").val(scores.toString());
 
             // Get components needed for ajax call
             var post_url = $(this).attr("action");

@@ -48,13 +48,13 @@ class Group(models.Model):
 def validate_rank_more_than_zero(value: int):
     """
     Ensure value is more than zero for ranking players.
-    :param value: A positive integer > 0
+    :param value: A positive integer > 0 or None
     :return: value
     """
-    if value >= 1:
+    if value > 0 or value is None:
         return value
     else:
-        raise ValidationError("This field must be >= 1")
+        raise ValidationError("This field must be > 0")
 
 
 class PlayerRank(models.Model):
@@ -66,9 +66,12 @@ class PlayerRank(models.Model):
     """
     player = models.ForeignKey(Player, related_name='game_player', on_delete=models.CASCADE)
     rank = models.IntegerField(null=True, validators=[validate_rank_more_than_zero])
+    score = models.IntegerField(null=True)
 
     def __str__(self):
-        return str("{}={}".format(self.player, self.rank))
+        if self.score:
+            return str("{}={}({})".format(self.player, self.rank, self.score))
+        return str("{}={}".format(self.player, self.rank if self.rank is not None else 'DNF'))
 
 
 class Round(models.Model):
@@ -82,16 +85,16 @@ class Round(models.Model):
     group = models.ForeignKey(Group, on_delete=models.CASCADE)
 
     def winners(self):
-        player_ids = self.players.filter(rank__exact=1).values_list('player', flat=True)
-        return Player.objects.filter(user_id__in=list(player_ids))
+        player_ids = self.players.filter(rank__exact=1).values_list('player_id', flat=True)
+        return Player.objects.filter(id__in=list(player_ids))
 
     def placed_players(self):
         player_ids = self.players.filter(rank__gt=0).values_list('player_id', flat=True)
-        return Player.objects.filter(user_id__in=list(player_ids))
+        return Player.objects.filter(id__in=list(player_ids))
 
     def all_players(self):
         player_ids = self.players.values_list('player_id', flat=True)
-        return Player.objects.filter(user_id__in=list(player_ids))
+        return Player.objects.filter(id__in=list(player_ids))
 
     def __str__(self):
         return str("{}, {}: {}".format(self.game, self.date, self.players.all()))

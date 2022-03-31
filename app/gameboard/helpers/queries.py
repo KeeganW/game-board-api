@@ -3,7 +3,7 @@ from collections import OrderedDict
 from dateutil.relativedelta import relativedelta
 from django.db.models import Count
 
-from gameboard.models import Player, Round, Group, Game
+from gameboard.models import Player, Round, Group, Game, PlayerRank
 from operator import itemgetter
 from datetime import datetime, timedelta
 from django.core.cache import cache
@@ -23,6 +23,20 @@ def find_win_percentage(player):
         if len(games_played) > 0:
             percentage = (len(wins)/len(games_played)) * 100
     return percentage
+
+
+def find_average_placement(player):
+    """
+    Calculate the average placement for a player.
+
+    :param player: A Player object, which contains the user info
+    :return: The player's win percentage across all games played (and all groups)
+    """
+    average = 0
+    if player:
+        ranks = list(search_ranks_by_player(player).values_list("rank", flat=True))
+        average = average_ranks(ranks)
+    return average
 
 
 def find_favorite_game(player):
@@ -152,6 +166,14 @@ def search_wins_by_player_in_time(player, date_start, date_end):
     return search_wins_by_player(player).filter(date__range=(date_start, date_end))
 
 
+def search_ranks_by_player(player):
+    return PlayerRank.objects.filter(player__user=player.user)
+
+
+def search_ranks_by_player_in_time(player, date_start, date_end):
+    return search_ranks_by_player(player).filter(game_players__date__range=(date_start, date_end))
+
+
 def search_games_by_player(player):
     return Round.objects.filter(players__player__user=player.user)
 
@@ -193,12 +215,19 @@ def find_player_status(player):
     # Search for recent games and count them
     recent_games = search_games_by_player_in_time(player, date_start, date_end).count()
 
-    if recent_games > 4:
+    if recent_games > 2:
         return "green"
     elif recent_games > 0:
         return "yellow"
     else:
         return "red"
+
+
+def average_ranks(rounds, return_zero_as_null=False):
+    if len(rounds) == 0:
+        return 'null' if return_zero_as_null else None
+    else:
+        return round(sum(rounds) / len(rounds), 1)
 
 
 def find_player_monthly_log(player):
@@ -208,6 +237,7 @@ def find_player_monthly_log(player):
     date_log = ['Month']
     wins_log = ['Win Count']
     rate_log = ['Win Rate']
+    ranks_log = ['Avg Rank']
 
     total_months = lambda dt: dt.month + 12 * dt.year
     day = int(date_start.strftime("%d"))
@@ -217,6 +247,7 @@ def find_player_monthly_log(player):
         month_wins = search_wins_by_player_in_time(player, last_month, datetime(year, month + 1, day)).count()
         total_wins = search_wins_by_player_in_time(player, date_start, datetime(year, month + 1, day)).count()
         total_games = search_games_by_player_in_time(player, date_start, datetime(year, month + 1, day)).count()
+        month_ranks = average_ranks(search_ranks_by_player_in_time(player, date_start, datetime(year, month + 1, day)).values_list('rank', flat=True), return_zero_as_null=True)
         last_month = datetime(year, month + 1, 1)
 
         wins_log.append(month_wins)
@@ -224,12 +255,13 @@ def find_player_monthly_log(player):
             rate_log.append(round(total_wins/total_games*100, 2))
         except ZeroDivisionError:
             rate_log.append(0)
+        ranks_log.append(month_ranks)
         date_log.append(last_month.strftime("%Y-%m-%d"))
 
-    return [date_log, wins_log], [date_log, rate_log]
+    return [date_log, wins_log], [date_log, rate_log], [date_log, ranks_log]
 
 
-def favorite_games(player):
+def favorite_games_wins(player):
     # Get the dates for this search
     date_start, date_end = generate_dates("all")
 
@@ -262,6 +294,49 @@ def favorite_games(player):
             other_count += game_win["total"]
         loop_count += 1
     favorites.append(['Other Games', other_count])
+
+    return favorites, [game_log, win_rate]
+
+
+def favorite_games(player):
+    # Get the dates for this search
+    date_start, date_end = generate_dates("all")
+
+    # Get all the games
+    all_games = search_games_by_player_in_time(player, date_start, date_end)
+    all_wins = search_wins_by_player_in_time(player, date_start, date_end)
+
+    # Group the games by their game_id, then count how many of each id there are
+    sorted_most_played = all_games.values("game_id").annotate(total=Count('game_id')).order_by('-total')
+    sorted_most_wins = all_wins.values("game_id").annotate(total=Count('game_id')).order_by('-total')
+
+    total_games = {}
+    for game_count in sorted_most_played:
+        total_games[game_count['game_id']] = game_count['total']
+
+    favorites = []
+    game_log = []
+    win_rate = ['Win Rate']
+    loop_count = 0
+    other_count = 0
+    for game_play in sorted_most_played:
+        game = Game.objects.filter(id=game_play["game_id"]).first()
+        if loop_count < 5:
+            favorites.append([game.name, game_play["total"]])
+        else:
+            # Add to "other"
+            other_count += game_play["total"]
+        loop_count += 1
+    favorites.append(['Other Games', other_count])
+
+    loop_count = 0
+    # Reformat wins into simple array
+    for game_win in sorted_most_wins:
+        game = Game.objects.filter(id=game_win["game_id"]).first()
+        if loop_count < 5:
+            game_log.append(game.name)
+            win_rate.append(round(game_win["total"]/total_games[game.id]*100, 2))
+        loop_count += 1
 
     return favorites, [game_log, win_rate]
 

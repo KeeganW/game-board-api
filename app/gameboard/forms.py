@@ -30,10 +30,11 @@ class AddRoundForm(forms.Form):
     player = forms.CharField(label='Player:', required=False, max_length=50)
     players = forms.CharField(widget=forms.HiddenInput(), required=False)
     ranks = forms.CharField(widget=forms.HiddenInput(), required=False)
+    scores = forms.CharField(widget=forms.HiddenInput(), required=False)
 
     class Meta:
         model = Round
-        fields = ('game', 'date', 'players', 'ranks')
+        fields = ('game', 'date', 'players', 'ranks', 'scores')
 
     def __init__(self, *args, **kwargs):
         """
@@ -60,23 +61,24 @@ class AddRoundForm(forms.Form):
         date = cleaned_data.get('date')
         players = cleaned_data.get('players')
         ranks = cleaned_data.get('ranks')
-
-        print(cleaned_data)
+        scores = cleaned_data.get('scores')
 
         if game:
             if date:
                 if players:
                     if ranks:
-                        # TODO Everything exists, validate the content.
-                        # Does the game exist?
-                        # Is the date within the last year?
-                        # Is the date not in the future?
-                        # Are the players in this group?
-                        # Is there a winner that isn't a player?
+                        if scores:
+                            # TODO Everything exists, validate the content.
+                            # Does the game exist?
+                            # Is the date within the last year?
+                            # Is the date not in the future?
+                            # Are the players in this group?
+                            # Is there a winner that isn't a player?
 
-                        # Everything works!
-                        return cleaned_data
+                            # Everything works!
+                            return cleaned_data
 
+                        raise forms.ValidationError("Scores are required")
                     raise forms.ValidationError("Ranks are required")
                 raise forms.ValidationError("Participating players are required")
             raise forms.ValidationError("Date is required")

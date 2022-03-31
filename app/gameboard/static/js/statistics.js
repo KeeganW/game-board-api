@@ -54,6 +54,38 @@ var winTimeChart = c3.generate({
     }
 });
 
+var rankTimeChart = c3.generate({
+    bindto: '#rank-time-chart',
+    data: {
+        x: 'Month',
+        columns: rankTimeData,
+        colors: {
+            'Win Rate': '#ff9429',
+        },
+        type: 'spline'
+    },
+    axis : {
+        x : {
+            type : 'timeseries',
+            tick: {
+                format: function (x) { return monthNamesShort[x.getMonth()] + " - " + x.getFullYear(); }
+            }
+        },
+        y: {
+            inverted: true,
+            max: 5,
+            min: 1,
+            padding: {top: 0, bottom: 0}
+        }
+    },
+    legend: {
+        show: false
+    },
+    line: {
+        connect_null: false
+    }
+});
+
 var favoriteChart = c3.generate({
     bindto: '#favorite-chart',
     data: {
