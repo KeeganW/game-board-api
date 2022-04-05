@@ -9,7 +9,7 @@ Run docker (note, you may need to run this twice after the database is made afte
 
 ## First Time Setup
 Note, you will need to create the django migrations for the system to work
-- `docker exec -it game-board_web_1 python manage.py makemigrations gameboard && docker exec -it game-board_web_1 python manage.py migrate --run-syncdb`
+- `docker exec -it game-board-web-1 python manage.py makemigrations gameboard && docker exec -it game-board-web-1 python manage.py migrate --run-syncdb`
 
 ## Running the website
 1. Run the web server.

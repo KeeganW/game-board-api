@@ -1,3 +1,5 @@
+from enum import Enum
+
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
@@ -98,6 +100,63 @@ class Round(models.Model):
 
     def __str__(self):
         return str("{}, {}: {}".format(self.game, self.date, self.players.all()))
+
+
+class BracketRound(models.Model):
+    """
+    When a bracket is played, its individual matches can be tracked by their corresponding match number.
+    These matches correspond to a round, which tracks the actual outcome.
+    """
+    match = models.IntegerField(null=False)
+    round = models.ForeignKey(Round, on_delete=models.CASCADE)
+
+    def __str__(self):
+        return str("{}: {}".format(self.match, self.round_id))
+
+
+class Team(models.Model):
+    """
+    A team is composed of a set of players who are playing for that team. Each team is identified by their name.
+    Teams can be customized to have a hex color.
+    """
+    name = models.CharField(max_length=50)
+    color = models.CharField(max_length=6)
+    players = models.ManyToManyField(Player, related_name='game_players')
+
+    def __str__(self):
+        return str("{}: {}".format(self.name, self.players.all()))
+
+
+class BracketType(Enum):
+    SINGLE_ELIMINATION = 'Single Elimination'
+    DOUBLE_ELIMINATION = 'Double Elimination'
+    ROUND_ROBIN = 'Round Robin'
+
+
+class Bracket(models.Model):
+    """
+    A bracket is formed using a given bracket type. These brackets are composed of teams, and the rounds of games
+    they play against each other.
+    """
+    type = models.CharField(BracketType, max_length=50)
+    rounds = models.ManyToManyField(BracketRound, related_name='rounds')
+    teams = models.ManyToManyField(Team, related_name='teams')
+
+    def __str__(self):
+        return str("{}: {}".format(self.type, self.teams.all()))
+
+
+class Tournament(models.Model):
+    """
+    Tournaments are where a group of players play against each other, trying to have their team win the overall
+    tournament.
+    """
+    name = models.CharField(max_length=50)
+    bracket = models.ForeignKey(Bracket, on_delete=models.CASCADE)
+    group = models.ForeignKey(Group, on_delete=models.CASCADE)
+
+    def __str__(self):
+        return str("{}".format(self.name))
 
 
 class StatisticType(models.Model):

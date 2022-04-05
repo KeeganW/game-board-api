@@ -1,14 +1,14 @@
 from django.contrib.auth.models import User
-from django.contrib.staticfiles.testing import StaticLiveServerTestCase
 from django.test import TestCase, LiveServerTestCase, Client
+from gameboard.models import Player, Round, Game, Group, PlayerRank, Team, Bracket, Tournament, BracketRound, \
+    BracketType
+import datetime
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.firefox.webdriver import WebDriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-
-from gameboard.models import Player, Round, Game, Group, PlayerRank
-import datetime
+from django.contrib.staticfiles.testing import StaticLiveServerTestCase
 
 
 class TestGameBoardModels(TestCase):
@@ -114,7 +114,7 @@ class TestGameBoardModels(TestCase):
         player2 = Player.objects.get(user__username="john")
         player3 = Player.objects.get(user__username="jane")
         player4 = group.admins.first()
-        
+
         self.assertEquals(player3, player4)
         self.assertIn(player1, group.players.all())
         self.assertIn(player2, group.players.all())
@@ -189,6 +189,53 @@ class TestGameBoardModels(TestCase):
         self.assertNotIn(player2, all_players3)
         self.assertIn(player3, all_players3)
 
+    def test_tournament(self):
+        """
+        Test that a tournament works as expected
+        :return: None
+        """
+        player1 = Player.objects.get(user__username="james")
+        player2 = Player.objects.get(user__username="john")
+        player3 = Player.objects.get(user__username="jane")
+        game1 = Game.objects.get(name="Uno")
+        game_date = datetime.datetime.strptime("2019-12-01", "%Y-%m-%d").date()
+        group = Group.objects.get(name="TestingGroup")
+
+        # Create two teams, one from player1, one from player2
+        t1 = Team(name="Player 1's Team", color="FFFFFF")
+        t1.save()
+        t1.players.add(player1)
+
+        t2 = Team(name="Player 2's Team", color="000000")
+        t2.save()
+        t2.players.add(player2)
+
+        # Create a new bracket, and add the two teams
+        b1 = Bracket(type=BracketType.ROUND_ROBIN)
+        b1.save()
+        b1.teams.add(t1)
+        b1.teams.add(t2)
+
+        # Create a new tournament
+        tour1 = Tournament(name="Test Tournament", bracket=b1, group=group)
+        tour1.save()
+
+        # Add a single match between teams
+        played1 = Round(game=game1, date=game_date, group=group)
+        played1.save()
+        rank1 = PlayerRank(player=player1, rank=1)
+        rank1.save()
+        rank2 = PlayerRank(player=player2, rank=2)
+        rank2.save()
+        played1.players.add(rank1)
+        played1.players.add(rank2)
+        # Make it a bracket round
+        br1 = BracketRound(match=1, round=played1)
+        br1.save()
+        # Add it to bracket
+        b1.rounds.add(br1)
+
+        # TODO(keegan): write actual tests
 
 # class TestMenuServeFunctions(StaticLiveServerTestCase):
 #     """
