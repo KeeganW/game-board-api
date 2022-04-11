@@ -8,6 +8,7 @@ from django.http import HttpResponseRedirect, JsonResponse, Http404
 from django.shortcuts import render
 from django.urls import reverse
 from django.utils import timezone
+from django.views.decorators.csrf import ensure_csrf_cookie
 from rest_framework import viewsets, permissions, status
 from rest_framework.authtoken.models import Token
 from rest_framework.authtoken.views import ObtainAuthToken
@@ -548,85 +549,12 @@ def game_detail(request, pk):
         snippet.delete()
         return HttpResponse(status=204)
 
+@ensure_csrf_cookie
+def set_csrf_token(request):
+    """
+    This will be `/api/set-csrf-cookie/` on `urls.py`
+    """
+    return JsonResponse({"details": "CSRF cookie set"})
+
 # Serializing Views
 
-
-class PlayerViewSet(viewsets.ModelViewSet):
-    """
-    API endpoint that allows groups to be viewed or edited.
-    """
-    queryset = Player.objects.all()
-    serializer_class = PlayerSerializer
-    permission_classes = [IsAuthenticated]
-
-
-class GameViewSet(viewsets.ModelViewSet):
-    """
-    API endpoint that allows groups to be viewed or edited.
-    """
-    queryset = Game.objects.all()
-    serializer_class = GameSerializer
-    permission_classes = [IsAuthenticated]
-
-
-class GroupViewSet(viewsets.ModelViewSet):
-    """
-    API endpoint that allows groups to be viewed or edited.
-    """
-    queryset = Group.objects.all()
-    serializer_class = GroupSerializer
-    permission_classes = [IsAuthenticated]
-
-
-class PlayerRankViewSet(viewsets.ModelViewSet):
-    """
-    API endpoint that allows groups to be viewed or edited.
-    """
-    queryset = PlayerRank.objects.all()
-    serializer_class = PlayerRankSerializer
-    permission_classes = [IsAuthenticated]
-
-
-class RoundViewSet(viewsets.ModelViewSet):
-    """
-    API endpoint that allows groups to be viewed or edited.
-    """
-    queryset = Round.objects.all()
-    serializer_class = RoundSerializer
-    permission_classes = [IsAuthenticated]
-
-
-class BracketRoundViewSet(viewsets.ModelViewSet):
-    """
-    API endpoint that allows groups to be viewed or edited.
-    """
-    queryset = BracketRound.objects.all()
-    serializer_class = BracketRoundSerializer
-    permission_classes = [IsAuthenticated]
-
-
-class TeamViewSet(viewsets.ModelViewSet):
-    """
-    API endpoint that allows groups to be viewed or edited.
-    """
-    queryset = Team.objects.all()
-    serializer_class = TeamSerializer
-    permission_classes = [IsAuthenticated]
-
-
-class BracketViewSet(viewsets.ModelViewSet):
-    """
-    API endpoint that allows groups to be viewed or edited.
-    """
-    queryset = Bracket.objects.all()
-    serializer_class = BracketSerializer
-    permission_classes = [IsAuthenticated]
-
-
-class TournamentViewSet(viewsets.ModelViewSet):
-    """
-    API endpoint that allows groups to be viewed or edited.
-    """
-    queryset = Tournament.objects.all()
-    serializer_class = TournamentSerializer
-    permission_classes = [IsAuthenticated]

@@ -14,7 +14,6 @@ from gameboard.pages.tournament import tournament, all_tournaments, add_tourname
 
 # Routers for getting all values from db (developer only) TODO remove this, testing only
 router = routers.DefaultRouter()
-router.register(r'users', views.UserViewSet)
 router.register(r'player', views.PlayerViewSet)
 router.register(r'game', views.GameViewSet)
 router.register(r'group', views.GroupViewSet)

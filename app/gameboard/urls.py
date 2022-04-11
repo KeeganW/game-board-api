@@ -1,8 +1,9 @@
-from django.urls import path
-from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+from django.urls import path, include
+from rest_framework import generics, permissions, serializers, routers
 
-from rest_framework import generics, permissions, serializers
+from gameboard import views, viewsets
 from gameboard.models import Player
+from gameboard.views import import_scores, export_scores
 
 
 class SignUpSerializer(serializers.ModelSerializer):
@@ -38,8 +39,25 @@ class SignUp(generics.CreateAPIView):
     permission_classes = [IsAuthenticatedOrCreate]
 
 
+router = routers.DefaultRouter()
+router.register(r'player', viewsets.PlayerViewSet)
+router.register(r'game', viewsets.GameViewSet)
+router.register(r'group', viewsets.GroupViewSet)
+router.register(r'player_rank', viewsets.PlayerRankViewSet)
+router.register(r'round', viewsets.RoundViewSet)
+router.register(r'bracket_round', viewsets.BracketRoundViewSet)
+router.register(r'team', viewsets.TeamViewSet)
+router.register(r'bracket', viewsets.BracketViewSet)
+router.register(r'tournament', viewsets.TournamentViewSet)
+
 urlpatterns = [
+    path('', include(router.urls)),
+
+    # Import/Export
+    path('import/', import_scores, name="import"),
+    path('export/', export_scores, name="export"),
+
+    # Signing in and registering urls
     path("register/", SignUp.as_view()),
-    path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
-    path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path("token/", include('gameboard.urls_authentication')),
 ]

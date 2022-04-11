@@ -1,7 +1,6 @@
 import csv
 import os
 
-from django.contrib.auth.models import User
 from django.db.models import QuerySet
 
 from gameboardapp.settings import STATIC_ROOT, PROJECT_ROOT, BASE_DIR, APP_ROOT, MEDIA_ROOT
@@ -59,7 +58,6 @@ class ImportScores:
         :return: None
         """
         self.delete_helper(Player.objects.all())
-        self.delete_helper(User.objects.all())
         self.delete_helper(Game.objects.all())
         self.delete_helper(Round.objects.all())
         self.delete_helper(PlayerRank.objects.all())
@@ -152,13 +150,7 @@ class ImportScores:
                 print(f"Adding player: {player}")
                 # Set the user object
                 username = player.replace(" ", "")
-                u = User(first_name=player, last_name="", username=username)
-                u.save()
-                u.set_password("password")
-                u.save()
-
-                # Set the player object
-                p = Player(user=u, date_of_birth=datetime.now(), primary_group=group)
+                p = Player.objects.create_user(first_name=player, last_name="", username=username, date_of_birth=datetime.now(), primary_group=group, password="password")
                 p.save()
 
                 self.players[player] = p
