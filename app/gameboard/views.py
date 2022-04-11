@@ -1,17 +1,20 @@
+import json
 from datetime import datetime
 
+import pytz
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.models import User
-from django.http import HttpResponseRedirect, JsonResponse, Http404, HttpResponse
+from django.http import HttpResponseRedirect, JsonResponse, Http404
 from django.shortcuts import render
 from django.urls import reverse
+from django.utils import timezone
 from rest_framework import viewsets, permissions, status
+from rest_framework.authtoken.models import Token
+from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.parsers import JSONParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from rest_framework.views import APIView
 
 from gameboard.forms import LoginForm, RegisterForm, AddRoundForm, EditForm, AddGameForm
 from gameboard.helpers.import_helper import ImportScores, ExportScores
@@ -21,18 +24,17 @@ from gameboard.queries.find import find_games, find_players_in_group, find_group
 from gameboard.queries.generate import favorite_games
 from gameboard.queries.helpers import clear_cache, get_cache
 from gameboard.queries.search import search_games_by_group, find_oldest_date
-from gameboard.serializers import UserSerializer, GroupSerializer, PlayerSerializer, GameSerializer, \
+from gameboard.serializers import GroupSerializer, PlayerSerializer, GameSerializer, \
     PlayerRankSerializer, RoundSerializer, BracketRoundSerializer, TeamSerializer, BracketSerializer, \
     TournamentSerializer
 from gameboard.utils import get_user_info, get_user_info_by_username
 import datetime
-from django.utils.timezone import utc
-from rest_framework.authtoken.views import ObtainAuthToken
-from rest_framework.authtoken.models import Token
 from django.http import HttpResponse
-import json
+
+from gameboardapp.settings import TOKEN_TTL
 
 """ Non login required functions """
+
 
 
 def index(request):
@@ -147,21 +149,21 @@ def gb_register(request):
             username = register_form.cleaned_data['username']
             password = register_form.cleaned_data['password']
 
-            # Create the django user object
-            u = User(first_name=first_name, last_name=last_name, username=username, password=password)
-            u.save()
-
-            # Set it's password (for some reason providing the password doesnt work, have to set it again)
-            u.set_password(password)
-            u.save()
-
-            # Tie the user to the player user object
-            p = Player(user=u)
-            p.save()
-            p.user.save()
-
-            # Login the user, and send them to the index page
-            login(request, u)
+            # # Create the django user object
+            # u = User(first_name=first_name, last_name=last_name, username=username, password=password)
+            # u.save()
+            #
+            # # Set it's password (for some reason providing the password doesnt work, have to set it again)
+            # u.set_password(password)
+            # u.save()
+            #
+            # # Tie the user to the player user object
+            # p = Player(user=u)
+            # p.save()
+            # p.user.save()
+            #
+            # # Login the user, and send them to the index page
+            # login(request, u)
             return HttpResponseRedirect(reverse(index))
 
     # Set the data to whatever was figured out above
@@ -488,6 +490,27 @@ def edit_player(request):
     return render(request, "edit_player.html", data)
 
 
+
+
+class ObtainExpiringAuthToken(ObtainAuthToken):
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+
+        if serializer.is_valid():
+            token, created = Token.objects.get_or_create(user=serializer.validated_data['user'])
+
+            utc_now = timezone.now().replace(tzinfo=pytz.utc)
+            if not created and token.created < utc_now - TOKEN_TTL:
+                token.delete()
+                token = Token.objects.create(user=serializer.validated_data['user'])
+                token.created = utc_now
+                token.save()
+
+            response_data = {'token': token.key}
+            return HttpResponse(json.dumps(response_data), content_type="application/json")
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 """ API Calls """
 
 @login_required
@@ -548,14 +571,6 @@ def game_detail(request, pk):
         return HttpResponse(status=204)
 
 # Serializing Views
-
-class UserViewSet(viewsets.ModelViewSet):
-    """
-    API endpoint that allows users to be viewed or edited.
-    """
-    queryset = User.objects.all().order_by('-date_joined')
-    serializer_class = UserSerializer
-    permission_classes = [IsAuthenticated]
 
 
 class PlayerViewSet(viewsets.ModelViewSet):

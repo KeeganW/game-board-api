@@ -1,4 +1,5 @@
 data/
+*.key
 
 # Custom gitignore components
 # Ignore the migrations folder where django stores files created from managing db

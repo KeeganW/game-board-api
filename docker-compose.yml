@@ -29,6 +29,8 @@ services:
       - DBPASS=postgres
       - DBHOST=db
       - DBPORT=5432
-      - SECRET_KEY="thisisasupersecretkeydefinitelynotunsafe"
+      - SECRET_KEY=${OIDC_RSA_KEY_1}
     depends_on:
       - db
+    env_file:
+      - .env

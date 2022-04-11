@@ -21,7 +21,7 @@ class PlayerSerializer(serializers.ModelSerializer):
     user = UserSerializer()
     class Meta:
         model = Player
-        fields = ['user', 'date_of_birth', 'profile_image', 'favorite_game', 'primary_group']
+        fields = ['username', 'date_of_birth', 'profile_image', 'favorite_game', 'primary_group']
 
 
 class GroupSerializer(serializers.ModelSerializer):
