@@ -181,5 +181,10 @@ REST_FRAMEWORK = {
         # By default pages should require authentication
         'rest_framework.permissions.IsAuthenticated',
     ),
+    'DEFAULT_THROTTLE_RATES': {
+        # This may need to be adjusted, but here are some starting values
+        'anon': '100/day',
+        'user': '1000/day'
+    },
 }
 

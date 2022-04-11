@@ -1,41 +1,28 @@
-import json
 from datetime import datetime
 
-import pytz
-from django.contrib.auth import authenticate, login, logout
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth import login
+from django.core.cache import cache
 from django.http import HttpResponseRedirect, JsonResponse, Http404
 from django.shortcuts import render
 from django.urls import reverse
-from django.utils import timezone
-from django.views.decorators.csrf import ensure_csrf_cookie
-from rest_framework import viewsets, permissions, status
-from rest_framework.authtoken.models import Token
-from rest_framework.authtoken.views import ObtainAuthToken
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.parsers import JSONParser
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
+from rest_framework import generics
+from rest_framework.decorators import permission_classes
 
-from gameboard.forms import LoginForm, RegisterForm, AddRoundForm, EditForm, AddGameForm
+from gameboard.forms import AddRoundForm, EditForm, AddGameForm
 from gameboard.helpers.import_helper import ImportScores, ExportScores
-from gameboard.models import Player, Round, Game, Group, PlayerRank, BracketRound, Team, Bracket, Tournament
+from gameboard.models import Player, Round, Game, PlayerRank
+from gameboard.permissions import IsAuthenticatedOrCreate
 from gameboard.queries.find import find_games, find_players_in_group, find_groups, find_player_activity_log, \
-    find_player_monthly_log, find_statistic
+    find_player_monthly_log, find_statistic, find_favorite_game, find_win_percentage, find_average_placement, \
+    find_player_status
 from gameboard.queries.generate import favorite_games
 from gameboard.queries.helpers import clear_cache, get_cache
 from gameboard.queries.search import search_games_by_group, find_oldest_date
-from gameboard.serializers import GroupSerializer, PlayerSerializer, GameSerializer, \
-    PlayerRankSerializer, RoundSerializer, BracketRoundSerializer, TeamSerializer, BracketSerializer, \
-    TournamentSerializer
+from gameboard.serializers import SignUpSerializer
 from gameboard.utils import get_user_info, get_user_info_by_username
 import datetime
-from django.http import HttpResponse
-
-from gameboardapp.settings import TOKEN_TTL
 
 """ Non login required functions """
-
 
 
 def index(request):
@@ -76,120 +63,7 @@ def export_scores(request):
     return HttpResponseRedirect(reverse(index))
 
 
-def gb_login(request):
-    """
-    A page for registering or logging into the website. Requires a form to be filled out with valid data before the user
-    is logged in.
-
-    :param request: A html request. Must contain a post function to have the page react to the user's input.
-    :return: A render template containing the register/login page. On success, a link to the index page.
-    """
-    # Don't need to render this page if the user is already logged in.
-    if request.user.is_authenticated:
-        return HttpResponseRedirect(reverse(player))
-
-    # Setup dictionary with data to be returned with render
-    data = dict()
-
-    # Setup basic forms
-    login_form = LoginForm(prefix='login')
-
-    # Only do things if the user has submitted data
-    if request.method == "POST":
-        # Validate the login form with user info
-        login_form = LoginForm(request.POST, prefix='login')
-        if login_form.is_valid():
-            # Get the relevant cleaned data for creating a user
-            username = login_form.cleaned_data['username']
-            password = login_form.cleaned_data['password']
-
-            # Authenticate the user, then log them in.
-            user = authenticate(username=username, password=password)
-
-            if user is not None:
-                login(request, user)
-
-                # Send the user to the index page (their profile page)
-                return HttpResponseRedirect(reverse(index))
-
-    # Set the data to whatever was figured out above
-    data['login_form'] = login_form
-
-    # Render the page
-    return render(request, "login.html", data)
-
-
-def gb_register(request):
-    """
-    A page for registering or logging into the website. Requires a form to be filled out with valid data before the user
-    is created.
-
-    :param request: A html request. Must contain a post function to have the page react to the user's input.
-    :return: A render template containing the register/login page. On success, a link to the index page.
-    """
-    # Don't need to render this page if the user is already logged in.
-    if request.user.is_authenticated:
-        return HttpResponseRedirect(reverse(player))
-
-    # Setup dictionary with data to be returned with render
-    data = dict()
-
-    # Setup basic forms
-    register_form = RegisterForm(prefix='register')
-
-    # Only do things if the user has submitted data
-    if request.method == "POST":
-        # Create the form using the request
-        register_form = RegisterForm(request.POST, prefix='register')
-
-        # Check if the data is valid
-        if register_form.is_valid():
-            # Get the relevant cleaned data for creating a user
-            first_name = register_form.cleaned_data['first_name']
-            last_name = register_form.cleaned_data['last_name']
-            username = register_form.cleaned_data['username']
-            password = register_form.cleaned_data['password']
-
-            # # Create the django user object
-            # u = User(first_name=first_name, last_name=last_name, username=username, password=password)
-            # u.save()
-            #
-            # # Set it's password (for some reason providing the password doesnt work, have to set it again)
-            # u.set_password(password)
-            # u.save()
-            #
-            # # Tie the user to the player user object
-            # p = Player(user=u)
-            # p.save()
-            # p.user.save()
-            #
-            # # Login the user, and send them to the index page
-            # login(request, u)
-            return HttpResponseRedirect(reverse(index))
-
-    # Set the data to whatever was figured out above
-    data['register_form'] = register_form
-
-    # Render the page
-    return render(request, "register.html", data)
-
-
-""" Login required functions """
-
-
-@login_required
-def gb_logout(request):
-    """
-    A simple logout function.
-
-    :param request: A html request, which contains the user's info.
-    :return: A link to the index page.
-    """
-    logout(request)
-    return HttpResponseRedirect(reverse(index))
-
-
-@login_required
+@permission_classes([IsAuthenticatedOrCreate])
 def player(request, player=None, message=None):
     """
     The player's main page, to be shown upon login. Also used to show sub tabs under the player including their
@@ -290,7 +164,7 @@ def player(request, player=None, message=None):
         return render(request, "player/profile.html", data)
 
 
-@login_required
+@permission_classes([IsAuthenticatedOrCreate])
 def group(request):
     """
     The group page, which contains statistics, graphs, and players within a group.
@@ -310,7 +184,7 @@ def group(request):
     return render(request, "group.html", data)
 
 
-@login_required
+@permission_classes([IsAuthenticatedOrCreate])
 def edit_group(request):
     """
     Edit group information like what players and admins there are, as well as name.
@@ -326,7 +200,7 @@ def edit_group(request):
     return render(request, "edit_group.html", data)
 
 
-@login_required
+@permission_classes([IsAuthenticatedOrCreate])
 def add_round(request):
     """
     A data entry page, which allows the user to enter a new game played, also known as a round.
@@ -394,7 +268,7 @@ def add_round(request):
     return render(request, "add_round.html", data)
 
 
-@login_required
+@permission_classes([IsAuthenticatedOrCreate])
 def add_game(request):
     """
     A data entry page, which allows the user to enter a new game played.
@@ -432,7 +306,7 @@ def add_game(request):
     return render(request, "add_game.html", data)
 
 
-@login_required
+@permission_classes([IsAuthenticatedOrCreate])
 def edit_player(request):
     """
     Edit player information, like username, name, password, and upload profile images.
@@ -490,71 +364,8 @@ def edit_player(request):
     data['player'] = gb_user
     return render(request, "edit_player.html", data)
 
-""" API Calls """
 
-@login_required
-def remove_round(request):
-    print(request.POST)
-    response = JsonResponse({})
-    if request.POST.get('roundId'):
-        Round.objects.filter(id=request.POST.get('roundId')).delete()
-        response.status_code = 200
-    else:
-        response.status_code = 500
-    return response
-
-
-class IsDeveloper(permissions.BasePermission):
-    """
-    Object-level permission to only allow owners of an object to edit it.
-    Assumes the model instance has an `owner` attribute.
-    """
-    def has_permission(self, request, view):
-        return request.user.username in ['keegan']
-
-
-@api_view(['GET'])
-@permission_classes([IsAuthenticated, IsDeveloper])
-def test(request, format=None):
-    content = {
-        'status': 'request was permitted'
-    }
-    return Response(content)
-
-
-@api_view(['GET', 'PUT', 'DELETE'])
-@permission_classes([IsAuthenticated])
-def game_detail(request, pk):
-    """
-    Retrieve, update or delete a game.
-    """
-    try:
-        snippet = Game.objects.get(id=pk)
-    except Game.DoesNotExist:
-        return HttpResponse(status=404)
-
-    if request.method == 'GET':
-        serializer = GameSerializer(snippet)
-        return JsonResponse(serializer.data)
-
-    elif request.method == 'PUT':
-        data = JSONParser().parse(request)
-        serializer = GameSerializer(snippet, data=data)
-        if serializer.is_valid():
-            serializer.save()
-            return JsonResponse(serializer.data)
-        return JsonResponse(serializer.errors, status=400)
-
-    elif request.method == 'DELETE':
-        snippet.delete()
-        return HttpResponse(status=204)
-
-@ensure_csrf_cookie
-def set_csrf_token(request):
-    """
-    This will be `/api/set-csrf-cookie/` on `urls.py`
-    """
-    return JsonResponse({"details": "CSRF cookie set"})
-
-# Serializing Views
-
+class SignUp(generics.CreateAPIView):
+    queryset = Player.objects.all()
+    serializer_class = SignUpSerializer
+    permission_classes = [IsAuthenticatedOrCreate]

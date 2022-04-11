@@ -54,3 +54,5 @@ For additional information, please see our [Wiki Page](https://github.com/Keegan
 # AUTH config
 `openssl genrsa -out oidc.key 4096` from app directory
 
+use modheader for viewing pages
+

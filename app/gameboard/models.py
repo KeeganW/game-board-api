@@ -12,12 +12,6 @@ from rest_framework.authtoken.models import Token
 from gameboardapp.settings import AUTH_USER_MODEL
 
 
-@receiver(post_save, sender=AUTH_USER_MODEL)
-def create_auth_token(sender, instance=None, created=False, **kwargs):
-    if created:
-        Token.objects.create(user=instance)
-
-
 class Game(models.Model):
     """
     The game class is all of the information about individual games which are played by users. Games will be non-group
@@ -29,6 +23,12 @@ class Game(models.Model):
 
     def __str__(self):
         return str(self.name)
+
+
+@receiver(post_save, sender=AUTH_USER_MODEL)
+def create_auth_token(sender, instance=None, created=False, **kwargs):
+    if created:
+        Token.objects.create(user=instance)
 
 
 class Player(AbstractUser):

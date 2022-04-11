@@ -3,6 +3,26 @@ from rest_framework import serializers
 from gameboard.models import Player, Game, Group, PlayerRank, Round, BracketRound, Team, Bracket, Tournament
 
 
+class SignUpSerializer(serializers.ModelSerializer):
+    def create(self, validated_data):
+        user = Player.objects.create_user(
+            username=validated_data['username'],
+            password=validated_data['password'],
+            # TODO: Other values?
+        )
+        user.save()
+        return user
+
+    class Meta:
+        model = Player
+        fields = ['username', 'password']
+        write_only_fields = ['password']
+        extra_kwargs = {
+            'username': {'required': True},
+            'password': {'required': True},
+        }
+
+
 class GameSerializer(serializers.ModelSerializer):
     class Meta:
         model = Game
