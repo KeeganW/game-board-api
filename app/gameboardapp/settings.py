@@ -71,29 +71,27 @@ DATABASES = {
 
 # TODO Comment OUT for production deployment!
 DEBUG = True
-ALLOWED_HOSTS = ['*']
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.sqlite3',
-#         'NAME': os.path.join(BASE_DIR, '../../db.sqlite3'),
-#     }
-# }
 
 
+# We want to allow the website from the env variables as one of the hosts (to access its own site)
 ALLOWED_HOSTS = [os.environ['WEBSITE_SITE_NAME'], '127.0.0.1', 'localhost'] if 'WEBSITE_SITE_NAME' in os.environ else ['127.0.0.1', 'localhost']
 
 
 # Application definition
 
 INSTALLED_APPS = [
+    # Standard Django installed
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    # API rest things
     'rest_framework',
+    # For token authentication
     'rest_framework.authtoken',
+    # The app we are building
     'gameboard',
 ]
 
@@ -110,6 +108,7 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'gameboardapp.urls'
 
+# TODO: maybe remove if we don't serve templates?
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -166,16 +165,19 @@ USE_TZ = True
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# Change the user model from models.User to this
 AUTH_USER_MODEL = 'gameboard.Player'
 
-# REST_AUTH_TOKEN_CREATOR = "gameboard.utils.custom_create_token"
+# How long before tokens timeout
 TOKEN_TTL = datetime.timedelta(days=5)
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
+        # Authentication should be done by a custom class
         'gameboard.authentication.ExpiringTokenAuthentication',
     ),
     'DEFAULT_PERMISSION_CLASSES': (
+        # By default pages should require authentication
         'rest_framework.permissions.IsAuthenticated',
     ),
 }

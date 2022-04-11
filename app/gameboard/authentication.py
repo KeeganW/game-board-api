@@ -12,7 +12,7 @@ class ExpiringTokenAuthentication(TokenAuthentication):
     It expires every {n} hrs requiring client to supply valid username
     and password for new one to be created.
     """
-
+    keyword = 'Bearer'
     model = Token
 
     def authenticate_credentials(self, key, request=None):

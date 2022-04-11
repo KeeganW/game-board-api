@@ -30,6 +30,7 @@ services:
       - DBHOST=db
       - DBPORT=5432
       - SECRET_KEY=${OIDC_RSA_KEY_1}
+      - WEBSITE_SITE_NAME=TBD
     depends_on:
       - db
     env_file:
