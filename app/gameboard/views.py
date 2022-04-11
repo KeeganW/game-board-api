@@ -489,28 +489,6 @@ def edit_player(request):
     data['player'] = gb_user
     return render(request, "edit_player.html", data)
 
-
-
-
-class ObtainExpiringAuthToken(ObtainAuthToken):
-    def post(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-
-        if serializer.is_valid():
-            token, created = Token.objects.get_or_create(user=serializer.validated_data['user'])
-
-            utc_now = timezone.now().replace(tzinfo=pytz.utc)
-            if not created and token.created < utc_now - TOKEN_TTL:
-                token.delete()
-                token = Token.objects.create(user=serializer.validated_data['user'])
-                token.created = utc_now
-                token.save()
-
-            response_data = {'token': token.key}
-            return HttpResponse(json.dumps(response_data), content_type="application/json")
-
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
 """ API Calls """
 
 @login_required

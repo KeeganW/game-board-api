@@ -91,6 +91,7 @@ INSTALLED_APPS = [
     'rest_framework',
     # For token authentication
     'rest_framework.authtoken',
+    'rest_framework_simplejwt',
     # The app we are building
     'gameboard',
 ]
@@ -173,8 +174,7 @@ TOKEN_TTL = datetime.timedelta(days=5)
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        # Authentication should be done by a custom class
-        'gameboard.authentication.ExpiringTokenAuthentication',
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
     'DEFAULT_PERMISSION_CLASSES': (
         # By default pages should require authentication
