@@ -31,8 +31,8 @@ MEDIA_ROOT = os.path.join(APP_ROOT, 'media')
 
 REPOSITORY_ROOT = os.path.dirname(BASE_DIR)
 
-STATIC_URL = os.path.join(APP_ROOT, "static/")
-MEDIA_URL = os.path.join(APP_ROOT, "media/")
+STATIC_URL = os.path.join(APP_ROOT, 'static/')
+MEDIA_URL = os.path.join(APP_ROOT, 'media/')
 
 # Set the secret key originally.
 SECRET_KEY = os.environ['SECRET_KEY']
@@ -113,7 +113,7 @@ ROOT_URLCONF = 'gameboardapp.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [os.path.join(BASE_DIR, "gameboard/templates")],
+        'DIRS': [os.path.join(BASE_DIR, 'gameboard/templates')],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -172,10 +172,8 @@ AUTH_USER_MODEL = 'gameboard.Player'
 TOKEN_TTL = datetime.timedelta(days=5)
 
 REST_FRAMEWORK = {
-    "DEFAULT_AUTHENTICATION_CLASSES": (
-        "gameboard.authentication.ExpiringTokenAuthentication",
-        # 'rest_framework.authentication.TokenAuthentication',
-        # "rest_framework.authentication.SessionAuthentication",
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'gameboard.authentication.ExpiringTokenAuthentication',
     ),
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
