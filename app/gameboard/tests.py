@@ -75,6 +75,40 @@ class TestGameBoardModels(TestCase):
         played3.save()
         played3.players.add(rank3)
 
+        # Create two teams, one from player1, one from player2
+        team1 = Team(name="Player 1's Team", color="FFFFFF")
+        team1.save()
+        team1.players.add(player1)
+
+        team2 = Team(name="Player 2's Team", color="000000")
+        team2.save()
+        team2.players.add(player2)
+
+        # Create a new bracket, and add the two teams
+        bracket1 = Bracket(type=BracketType.ROUND_ROBIN)
+        bracket1.save()
+        bracket1.teams.add(team1)
+        bracket1.teams.add(team2)
+
+        # Create a new tournament
+        tournament1 = Tournament(name="Test Tournament", bracket=bracket1, group=group)
+        tournament1.save()
+
+        # Add a single match between teams
+        played4 = Round(game=game1, date=game_date, group=group)
+        played4.save()
+        rank4 = PlayerRank(player=player1, rank=1)
+        rank4.save()
+        rank5 = PlayerRank(player=player2, rank=2)
+        rank5.save()
+        played4.players.add(rank4)
+        played4.players.add(rank5)
+        # Make it a bracket round
+        br1 = BracketRound(match=1, round=played4)
+        br1.save()
+        # Add it to bracket
+        bracket1.rounds.add(br1)
+
     def test_player(self):
         """
         Test the player object works by getting James, and testing various information about them.
@@ -200,40 +234,6 @@ class TestGameBoardModels(TestCase):
         game1 = Game.objects.get(name="Uno")
         game_date = datetime.datetime.strptime("2019-12-01", "%Y-%m-%d").date()
         group = Group.objects.get(name="TestingGroup")
-
-        # Create two teams, one from player1, one from player2
-        t1 = Team(name="Player 1's Team", color="FFFFFF")
-        t1.save()
-        t1.players.add(player1)
-
-        t2 = Team(name="Player 2's Team", color="000000")
-        t2.save()
-        t2.players.add(player2)
-
-        # Create a new bracket, and add the two teams
-        b1 = Bracket(type=BracketType.ROUND_ROBIN)
-        b1.save()
-        b1.teams.add(t1)
-        b1.teams.add(t2)
-
-        # Create a new tournament
-        tour1 = Tournament(name="Test Tournament", bracket=b1, group=group)
-        tour1.save()
-
-        # Add a single match between teams
-        played1 = Round(game=game1, date=game_date, group=group)
-        played1.save()
-        rank1 = PlayerRank(player=player1, rank=1)
-        rank1.save()
-        rank2 = PlayerRank(player=player2, rank=2)
-        rank2.save()
-        played1.players.add(rank1)
-        played1.players.add(rank2)
-        # Make it a bracket round
-        br1 = BracketRound(match=1, round=played1)
-        br1.save()
-        # Add it to bracket
-        b1.rounds.add(br1)
 
         # TODO(keegan): write actual tests
 

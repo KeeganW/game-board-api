@@ -1,38 +1,67 @@
-from django.urls import path
-from gameboard.views import index, import_scores, group, add_round, player, gb_logout, edit_player, edit_group, \
-    export_scores, gb_login, gb_register, add_game, remove_round
-from django.conf.urls.static import static
-from django.conf import settings
+from django.urls import path, include
+from django.contrib import admin
 
+from gameboard.models import Group
 
+admin.autodiscover()
+
+from django.contrib.auth import get_user_model
+User = get_user_model()
+
+from rest_framework import generics, permissions, serializers
+from oauth2_provider.contrib.rest_framework import TokenHasReadWriteScope, TokenHasScope
+
+# first we define the serializers
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ('username', 'email', "first_name", "last_name")
+
+class GroupSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Group
+        fields = ("name", )
+
+class SignUpSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ('username', 'password')
+        write_only_fields = ('password',)
+
+class IsAuthenticatedOrCreate(permissions.IsAuthenticated):
+    def has_permission(self, request, view):
+        if request.method == 'POST':
+            return True
+        return super(IsAuthenticatedOrCreate, self).has_permission(request, view)
+
+# Create the API views
+class SignUp(generics.CreateAPIView):
+    queryset = User.objects.all()
+    serializer_class = SignUpSerializer
+    permission_classes = [IsAuthenticatedOrCreate]
+
+class UserList(generics.ListCreateAPIView):
+    permission_classes = [permissions.IsAuthenticated, TokenHasReadWriteScope]
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+
+class UserDetails(generics.RetrieveAPIView):
+    permission_classes = [permissions.IsAuthenticated, TokenHasReadWriteScope]
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+
+class GroupList(generics.ListAPIView):
+    permission_classes = [permissions.IsAuthenticated, TokenHasScope]
+    required_scopes = ['groups']
+    queryset = Group.objects.all()
+    serializer_class = GroupSerializer
+
+# Setup the URLs and include login URLs for the browsable API.
 urlpatterns = [
-    # Main page reference
-    path('', index, name="index"),
-
-    # Sets up database
-    path('import/', import_scores, name="import"),
-    path('export/', export_scores, name="export"),
-
-    # Player specific pages
-    path('player/', player, name="player"),
-    path('player/<slug:player>/', player, name="player"),
-    path('player/<slug:player>/profile/', player, name="player.profile"),
-    path('player/<slug:player>/statistics/', player, name="player.statistics"),
-    path('player/<slug:player>/trophies/', player, name="player.trophies"),
-    path('player/<slug:player>/groups/', player, name="player.groups"),
-    path('edit_player/', edit_player, name="edit_player"),
-
-    # Group Pages
-    path('group/', group, name="group"),
-    path('edit_group/', edit_group, name="edit_group"),
-    path('add_round/', add_round, name="add_round"),
-    path('remove_round/', remove_round, name="remove_round"),
-
-    # Site functionality
-    path('logout/', gb_logout, name="logout"),
-    path('login/', gb_login, name="login"),
-    path('register/', gb_register, name="register"),
-
-    # Game Pages
-    path('add_game/', add_game, name="add_game"),
-] + static(settings.STATIC_ROOT, document_root=settings.STATIC_ROOT)
+    path('admin/', admin.site.urls),
+    path('o/', include('oauth2_provider.urls', namespace='oauth2_provider')),
+    path('users/', UserList.as_view()),
+    path('users/<pk>/', UserDetails.as_view()),
+    path('groups/', GroupList.as_view()),
+    path('sign_up/', SignUp.as_view(), name="sign_up"),
+]

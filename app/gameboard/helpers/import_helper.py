@@ -16,7 +16,8 @@ class ImportScores:
     """
     # The csv file to get data from
     # dataset_name = 'dataset2'
-    dataset_name = 'dataset3'
+    dataset_name = 'dataset4'
+    # dataset_name = 'dogpatchgames2'
     dataset = os.path.join(STATIC_ROOT, dataset_name + '.csv')
 
     version = int(dataset_name[-1])
@@ -84,8 +85,10 @@ class ImportScores:
             f_write = csv.writer(f, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
             headers = ['Date', 'Game', 'Coop']
             for line in all_data:
-                headers.append(line[0])
-                headers.append(line[0] + '_scores')
+                # Remove blank players
+                if line[0] != '':
+                    headers.append(line[0])
+                    headers.append(line[0] + '_scores')
             players = headers[3:]
             f_write.writerow(headers)
 
@@ -102,7 +105,7 @@ class ImportScores:
                 score = line.pop()
                 rank = line.pop()
                 game = line.pop()
-                if game != '':
+                if game != '' and rank != 'No Show':
                     game_id = game + '|:|' + date
                     # Now add it to our games dictionary
                     try:
@@ -204,7 +207,7 @@ class ImportScores:
                 game = line[self.game_loc]
                 if len(game) > 0:
                     # Set local variables
-                    players = list()
+                    player_ranks = list()
 
                     # Get the date the game was played on
                     date = datetime.strptime(line[self.date_loc], "%m/%d/%y")
@@ -227,21 +230,21 @@ class ImportScores:
                                 # Create a rank object, and get it setup to add
                                 try:
                                     player_placement = None if player_stat == "0" else int(player_stat)
-                                except ValueError:  # TODO(keegan): Is this correct for int conversion?
+                                except ValueError:
                                     player_placement = None
 
                                 # TODO add in self.version check for scores
                                 try:
                                     player_score = int(player_stats[player_index + 1])
-                                except ValueError:  # TODO(keegan): Is this correct for int conversion?
+                                except ValueError:
                                     player_score = None
                                 rank = PlayerRank(player=player, rank=player_placement, score=player_score)
-                                players.append(rank)
+                                player_ranks.append(rank)
 
-                    self.enter_game_played(players, game, date, group)
+                    self.enter_game_played(player_ranks, game, date, group)
 
     @staticmethod
-    def enter_game_played(players, game, date, group):
+    def enter_game_played(player_ranks, game, date, group):
         """
         Actually adds the game played to the database, linking to Player objects and Game objects.
 
@@ -258,11 +261,13 @@ class ImportScores:
             game_played.group = group
             game_played.save()
 
-            for player in players:
-                player.save()
-                game_played.players.add(player)
-        except:
+            for player_rank in player_ranks:
+                player_rank.save()
+                game_played.players.add(player_rank)
+        except Exception as e:
+            # TODO remove any created objects
             print("Error entering game", game)
+            print(e)
             pass
 
 

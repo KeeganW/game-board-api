@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block content %}
+    {% csrf_token %}
+    <div id="group-title">
+        <h1>{% block title %}{{ player.primary_group.name }}{% endblock %}</h1>
+        {{ csrf_token }}
+    </div>
+
+{% endblock %}
+
+{% block modal_placeholder %}
+{% endblock %}
+
+{% block scripts %}
+    <script>
+        function csrfSafeMethod(method) {
+            // these HTTP methods do not require CSRF protection
+            return (/^(GET|HEAD|OPTIONS|TRACE)$/.test(method));
+        }
+        // Setup the csrf token so we can remove this properly.
+        $.ajaxSetup({
+            beforeSend: function(xhr, settings) {
+                if (!csrfSafeMethod(settings.type) && !this.crossDomain) {
+                    xhr.setRequestHeader("X-CSRFToken", getCookie('csrftoken'));
+                }
+            }
+        });
+
+        tests = {
+            tournamantAdd: {
+                url: '/team/add/',
+                data: {
+                    "name": "Test Team",
+                    "playerIds": ["13", "14"],
+                    "tournamentId": "2"
+                }
+            },
+            tournamantAdd: {
+                url: '/add_bracket_round/',
+                data: {
+                    "roundId": "4",
+                    "tournamentId": "2",
+                    "match": "1",
+                }
+            },
+        }
+
+        toTest = tests.tournamantAdd
+
+        $.ajax({
+            url : toTest.url,
+            type: 'POST',
+            data : JSON.stringify(toTest.data),
+            dataType: "json",
+            success: function(response){
+                console.log(response)
+            },
+            error: function (response) {
+                console.log(response.responseJSON)
+            }
+        })
+    </script>
+{% endblock %}

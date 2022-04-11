@@ -1,57 +1,36 @@
+from datetime import datetime
+
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
-from django.http import HttpResponseRedirect, JsonResponse, Http404
+from django.http import HttpResponseRedirect, JsonResponse, Http404, HttpResponse
 from django.shortcuts import render
 from django.urls import reverse
-from django.template.defaulttags import register
-from django.core.cache import cache
+from rest_framework import viewsets, permissions, status
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.parsers import JSONParser
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
-
-from gameboard.forms import LoginForm, RegisterForm, AddRoundForm, EditForm, EditGroupForm, AddGameForm
+from gameboard.forms import LoginForm, RegisterForm, AddRoundForm, EditForm, AddGameForm
 from gameboard.helpers.import_helper import ImportScores, ExportScores
-from gameboard.helpers.queries import *
-from gameboard.models import Player, Round, Game, Group, PlayerRank
-
-""" Helper functions """
-
-
-def get_user_info(request):
-    """
-    A helper function which uses the user information in the request to get the Player object (which also contains the
-    user object).
-
-    :param request: A html request with user data (specifically username)
-    :return: None if no user found, otherwise the Player object.
-    """
-    try:
-        user = request.user
-        if user.is_anonymous:
-            return None
-        else:
-            return Player.objects.filter(user__username=user.username).first()
-    except KeyError:
-        return None
-
-
-def get_user_info_by_username(username):
-    """
-    A helper function which uses the user information in the request to get the Player object (which also contains the
-    user object).
-
-    :param username: A html request with user data (specifically username)
-    :return: None if no user found, otherwise the Player object.
-    """
-    try:
-        return Player.objects.filter(user__username=username).first()
-    except KeyError:
-        return None
-
-
-@register.filter
-def get_item(dictionary, key):
-    return dictionary.get(key)
-
+from gameboard.models import Player, Round, Game, Group, PlayerRank, BracketRound, Team, Bracket, Tournament
+from gameboard.queries.find import find_games, find_players_in_group, find_groups, find_player_activity_log, \
+    find_player_monthly_log, find_statistic
+from gameboard.queries.generate import favorite_games
+from gameboard.queries.helpers import clear_cache, get_cache
+from gameboard.queries.search import search_games_by_group, find_oldest_date
+from gameboard.serializers import UserSerializer, GroupSerializer, PlayerSerializer, GameSerializer, \
+    PlayerRankSerializer, RoundSerializer, BracketRoundSerializer, TeamSerializer, BracketSerializer, \
+    TournamentSerializer
+from gameboard.utils import get_user_info, get_user_info_by_username
+import datetime
+from django.utils.timezone import utc
+from rest_framework.authtoken.views import ObtainAuthToken
+from rest_framework.authtoken.models import Token
+from django.http import HttpResponse
+import json
 
 """ Non login required functions """
 
@@ -521,3 +500,140 @@ def remove_round(request):
     else:
         response.status_code = 500
     return response
+
+
+class IsDeveloper(permissions.BasePermission):
+    """
+    Object-level permission to only allow owners of an object to edit it.
+    Assumes the model instance has an `owner` attribute.
+    """
+    def has_permission(self, request, view):
+        return request.user.username in ['keegan']
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, IsDeveloper])
+def test(request, format=None):
+    content = {
+        'status': 'request was permitted'
+    }
+    return Response(content)
+
+
+@api_view(['GET', 'PUT', 'DELETE'])
+@permission_classes([IsAuthenticated])
+def game_detail(request, pk):
+    """
+    Retrieve, update or delete a game.
+    """
+    try:
+        snippet = Game.objects.get(id=pk)
+    except Game.DoesNotExist:
+        return HttpResponse(status=404)
+
+    if request.method == 'GET':
+        serializer = GameSerializer(snippet)
+        return JsonResponse(serializer.data)
+
+    elif request.method == 'PUT':
+        data = JSONParser().parse(request)
+        serializer = GameSerializer(snippet, data=data)
+        if serializer.is_valid():
+            serializer.save()
+            return JsonResponse(serializer.data)
+        return JsonResponse(serializer.errors, status=400)
+
+    elif request.method == 'DELETE':
+        snippet.delete()
+        return HttpResponse(status=204)
+
+# Serializing Views
+
+class UserViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint that allows users to be viewed or edited.
+    """
+    queryset = User.objects.all().order_by('-date_joined')
+    serializer_class = UserSerializer
+    permission_classes = [IsAuthenticated]
+
+
+class PlayerViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint that allows groups to be viewed or edited.
+    """
+    queryset = Player.objects.all()
+    serializer_class = PlayerSerializer
+    permission_classes = [IsAuthenticated]
+
+
+class GameViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint that allows groups to be viewed or edited.
+    """
+    queryset = Game.objects.all()
+    serializer_class = GameSerializer
+    permission_classes = [IsAuthenticated]
+
+
+class GroupViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint that allows groups to be viewed or edited.
+    """
+    queryset = Group.objects.all()
+    serializer_class = GroupSerializer
+    permission_classes = [IsAuthenticated]
+
+
+class PlayerRankViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint that allows groups to be viewed or edited.
+    """
+    queryset = PlayerRank.objects.all()
+    serializer_class = PlayerRankSerializer
+    permission_classes = [IsAuthenticated]
+
+
+class RoundViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint that allows groups to be viewed or edited.
+    """
+    queryset = Round.objects.all()
+    serializer_class = RoundSerializer
+    permission_classes = [IsAuthenticated]
+
+
+class BracketRoundViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint that allows groups to be viewed or edited.
+    """
+    queryset = BracketRound.objects.all()
+    serializer_class = BracketRoundSerializer
+    permission_classes = [IsAuthenticated]
+
+
+class TeamViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint that allows groups to be viewed or edited.
+    """
+    queryset = Team.objects.all()
+    serializer_class = TeamSerializer
+    permission_classes = [IsAuthenticated]
+
+
+class BracketViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint that allows groups to be viewed or edited.
+    """
+    queryset = Bracket.objects.all()
+    serializer_class = BracketSerializer
+    permission_classes = [IsAuthenticated]
+
+
+class TournamentViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint that allows groups to be viewed or edited.
+    """
+    queryset = Tournament.objects.all()
+    serializer_class = TournamentSerializer
+    permission_classes = [IsAuthenticated]

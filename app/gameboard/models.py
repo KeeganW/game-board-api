@@ -2,22 +2,20 @@ from enum import Enum
 
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 from django.utils import timezone
 from django.contrib.auth.models import User
+from rest_framework.authtoken.models import Token
+from django.contrib.auth.models import AbstractUser
+
+from gameboardapp.settings import AUTH_USER_MODEL
 
 
-class Player(models.Model):
-    """
-    The player class stores information about individual players.
-    """
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
-    date_of_birth = models.DateField(default=timezone.now().strftime("%Y-%m-%d"))
-    profile_image = models.ImageField(upload_to='', blank=True)
-    primary_group = models.ForeignKey("Group", blank=True, null=True, on_delete=models.CASCADE)
-    favorite_game = models.ForeignKey("Game", blank=True, null=True, on_delete=models.CASCADE)
-
-    def __str__(self):
-        return str(self.user.username)
+@receiver(post_save, sender=AUTH_USER_MODEL)
+def create_auth_token(sender, instance=None, created=False, **kwargs):
+    if created:
+        Token.objects.create(user=instance)
 
 
 class Game(models.Model):
@@ -25,7 +23,7 @@ class Game(models.Model):
     The game class is all of the information about individual games which are played by users. Games will be non-group
     specific. So if one group adds a game, it will then be available for all groups in the future.
     """
-    name = models.CharField(max_length=50, unique=True)
+    name = models.CharField(max_length=150, unique=True)
     description = models.CharField(max_length=400)
     game_picture = models.ImageField(upload_to='', blank=True)
 
@@ -33,14 +31,28 @@ class Game(models.Model):
         return str(self.name)
 
 
+class Player(AbstractUser):
+    """
+    The player class stores information about individual players.
+    """
+    date_of_birth = models.DateField(default=timezone.now().strftime("%Y-%m-%d"))
+    profile_image = models.ImageField(upload_to='', blank=True)
+    favorite_game = models.ForeignKey(Game, blank=True, null=True, on_delete=models.CASCADE)
+    # Group is not an object, because we need to define one of these before the other will work
+    primary_group = models.ForeignKey("Group", blank=True, null=True, on_delete=models.CASCADE)
+
+    def __str__(self):
+        return str(self.username)
+
+
 class Group(models.Model):
     """
     A player group is a group which users/players can create and invite other players too. This allows users to keep all
     of the friends the play games with in separate groups, and keep track of scores with those other players.
     """
-    name = models.CharField(max_length=50)
-    players = models.ManyToManyField(Player, related_name='players')
-    admins = models.ManyToManyField(Player, related_name='admins')
+    name = models.CharField(max_length=150)
+    players = models.ManyToManyField(AUTH_USER_MODEL, related_name='players')
+    admins = models.ManyToManyField(AUTH_USER_MODEL, related_name='admins')
     group_picture = models.ImageField(upload_to='', blank=True)
 
     def __str__(self):
@@ -66,7 +78,7 @@ class PlayerRank(models.Model):
     A null rank means that the player either did not finish, or the game only supports winners and the others are not
     ranked.
     """
-    player = models.ForeignKey(Player, related_name='game_player', on_delete=models.CASCADE)
+    player = models.ForeignKey(AUTH_USER_MODEL, related_name='game_player', on_delete=models.CASCADE)
     rank = models.IntegerField(null=True, validators=[validate_rank_more_than_zero])
     score = models.IntegerField(null=True)
 
@@ -83,6 +95,7 @@ class Round(models.Model):
     """
     game = models.ForeignKey(Game, on_delete=models.CASCADE)
     date = models.DateField(default=timezone.now().strftime("%Y-%m-%d"))
+    # TODO rename this to player_ranks?
     players = models.ManyToManyField(PlayerRank, related_name='game_players')
     group = models.ForeignKey(Group, on_delete=models.CASCADE)
 
@@ -121,7 +134,7 @@ class Team(models.Model):
     """
     name = models.CharField(max_length=50)
     color = models.CharField(max_length=6)
-    players = models.ManyToManyField(Player, related_name='game_players')
+    players = models.ManyToManyField(AUTH_USER_MODEL, related_name='game_players')
 
     def __str__(self):
         return str("{}: {}".format(self.name, self.players.all()))
@@ -159,6 +172,7 @@ class Tournament(models.Model):
         return str("{}".format(self.name))
 
 
+# TODO use db for statistics
 class StatisticType(models.Model):
     name = models.CharField(max_length=100, unique=True)
     unit = models.CharField(max_length=50)
@@ -171,6 +185,6 @@ class StatisticInfo(models.Model):
 
 
 class Statistic(models.Model):
-    player = models.ForeignKey(Player, on_delete=models.CASCADE)
+    player = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.CASCADE)
     value = models.DecimalField(decimal_places=2, max_digits=16)
     info = models.ForeignKey(StatisticInfo, on_delete=models.CASCADE)
