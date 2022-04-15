@@ -20,6 +20,7 @@ from django.conf.urls.static import static
 from django.conf import settings
 
 urlpatterns = [
+    # TODO remove this for production deploy
     path('admin/', admin.site.urls),
     path('', include(gameboard_patterns))
 ] + static(settings.MEDIA_ROOT, document_root=settings.MEDIA_ROOT)

@@ -92,11 +92,14 @@ INSTALLED_APPS = [
     # For token authentication
     'rest_framework.authtoken',
     'rest_framework_simplejwt',
+    # For CORS
+    'corsheaders',
     # The app we are building
     'gameboard',
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -187,4 +190,9 @@ REST_FRAMEWORK = {
         'user': '1000/day'
     },
 }
+
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000"
+]
 
