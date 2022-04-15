@@ -23,6 +23,10 @@ urlpatterns = [
     path('import/', import_scores, name="import"),
     path('export/', export_scores, name="export"),
 
+
+    path('set-csrf/', views.set_csrf_token, name='Set-CSRF'),
+    path('login/', views.login_view, name='Login'),
+
     # Signing in and registering urls
     path('register/', views.SignUp.as_view()),
     path('', include('gameboard.urls_authentication')),

@@ -110,6 +110,8 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
+SESSION_ENGINE = 'django.contrib.sessions.backends.signed_cookies'
+
 ROOT_URLCONF = 'gameboardapp.urls'
 
 # TODO: maybe remove if we don't serve templates?
@@ -191,8 +193,24 @@ REST_FRAMEWORK = {
     },
 }
 
+
+# Info on why we need all of this
+# https://www.django-rest-framework.org/topics/ajax-csrf-cors/
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000"
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
 ]
+# TODO Do not use this function! Backup in case cors things stop working
+# CORS_ALLOW_ALL_ORIGINS = True
+
+# Allow preflights to work
+CORS_ALLOW_CREDENTIALS = True
+
+# CSRF Is for
+CSRF_TRUSTED_ORIGINS = [
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+]
+
+# CSRF_COOKIE_DOMAIN = 'bluemix.net'
 

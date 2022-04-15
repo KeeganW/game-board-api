@@ -1,10 +1,13 @@
+import json
 from datetime import datetime
 
-from django.contrib.auth import login
+from django.contrib.auth import login, authenticate
 from django.core.cache import cache
 from django.http import HttpResponseRedirect, JsonResponse, Http404
 from django.shortcuts import render
 from django.urls import reverse
+from django.views.decorators.csrf import ensure_csrf_cookie
+from django.views.decorators.http import require_POST
 from rest_framework import generics
 from rest_framework.decorators import permission_classes
 
@@ -369,3 +372,33 @@ class SignUp(generics.CreateAPIView):
     queryset = Player.objects.all()
     serializer_class = SignUpSerializer
     permission_classes = [IsAuthenticatedOrCreate]
+
+@ensure_csrf_cookie
+def set_csrf_token(request):
+    """
+    This will be `/api/set-csrf-cookie/` on `urls.py`
+    """
+    return JsonResponse({"details": "CSRF cookie set"})
+
+@require_POST
+def login_view(request):
+    """
+    This will be `/api/login/` on `urls.py`
+    """
+    data = json.loads(request.body)
+    username = data.get('username')
+    password = data.get('password')
+    if username is None or password is None:
+        return JsonResponse({
+            "errors": {
+                "__all__": "Please enter both username and password"
+            }
+        }, status=400)
+    user = authenticate(username=username, password=password)
+    if user is not None:
+        login(request, user)
+        return JsonResponse({"detail": "Success"})
+    return JsonResponse(
+        {"detail": "Invalid credentials"},
+        status=400,
+    )
