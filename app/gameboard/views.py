@@ -1,7 +1,7 @@
 import json
 from datetime import datetime
 
-from django.contrib.auth import login, authenticate
+from django.contrib.auth import login, authenticate, logout
 from django.core.cache import cache
 from django.http import HttpResponseRedirect, JsonResponse, Http404
 from django.shortcuts import render
@@ -397,8 +397,18 @@ def login_view(request):
     user = authenticate(username=username, password=password)
     if user is not None:
         login(request, user)
-        return JsonResponse({"detail": "Success"})
+        return JsonResponse({"detail": "Success", "player": user.pk})
     return JsonResponse(
         {"detail": "Invalid credentials"},
-        status=400,
+        status=401,
+    )
+
+def logout_view(request):
+    """
+    This will be `/api/login/` on `urls.py`
+    """
+    logout(request)
+    return JsonResponse(
+        {"detail": "Logged user out"},
+        status=200,
     )

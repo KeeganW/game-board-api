@@ -26,6 +26,7 @@ urlpatterns = [
 
     path('set-csrf/', views.set_csrf_token, name='Set-CSRF'),
     path('login/', views.login_view, name='Login'),
+    path('logout/', views.logout_view, name='Logout'),
 
     # Signing in and registering urls
     path('register/', views.SignUp.as_view()),
