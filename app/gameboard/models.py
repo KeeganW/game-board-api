@@ -116,6 +116,7 @@ class Round(models.Model):
 
 
 class BracketRound(models.Model):
+# class BracketMatch(models.Model):
     """
     When a bracket is played, its individual matches can be tracked by their corresponding match number.
     These matches correspond to a round, which tracks the actual outcome.
@@ -124,7 +125,7 @@ class BracketRound(models.Model):
     round = models.ForeignKey(Round, on_delete=models.CASCADE)
 
     def __str__(self):
-        return str("{}: {}".format(self.match, self.round_id))
+        return str("{}: {}".format(self.match, self.round))
 
 
 class Team(models.Model):
@@ -153,6 +154,7 @@ class Bracket(models.Model):
     """
     type = models.CharField(BracketType, max_length=50)
     rounds = models.ManyToManyField(BracketRound, related_name='rounds')
+    # matches = models.ManyToManyField(BracketMatch, related_name='rounds')
     teams = models.ManyToManyField(Team, related_name='teams')
 
     def __str__(self):

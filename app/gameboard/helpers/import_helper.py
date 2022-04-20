@@ -14,9 +14,8 @@ class ImportScores:
     Imports scores form a custom formatted csv (stored as a static file).
     """
     # The csv file to get data from
-    # dataset_name = 'dataset2'
-    dataset_name = 'dataset4'
-    # dataset_name = 'dogpatchgames2'
+    dataset_name = 'dataset5'
+    # dataset_name = 'dogpatchgames5'
     dataset = os.path.join(STATIC_ROOT, dataset_name + '.csv')
 
     version = int(dataset_name[-1])
@@ -142,7 +141,7 @@ class ImportScores:
             if self.version > 1:
                 # Remove odd indexes (scores)
                 new_players = [v for i, v in enumerate(new_players) if i % 2 == 0]
-            group = Group(name="Sample Group")
+            group = Group(name="Dogpatch Games")
             group.save()
 
             # Loop over those players
@@ -151,6 +150,10 @@ class ImportScores:
                 # Set the user object
                 username = player.replace(" ", "")
                 p = Player.objects.create_user(first_name=player, last_name="", username=username, date_of_birth=datetime.now(), primary_group=group, password="password")
+                if player == "keegan":
+                    p.is_staff = True
+                    p.is_superuser = True
+                    p.is_admin = True
                 p.save()
 
                 self.players[player] = p

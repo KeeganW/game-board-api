@@ -7,13 +7,13 @@ from django.http import HttpResponseRedirect, JsonResponse, Http404
 from django.shortcuts import render
 from django.urls import reverse
 from django.views.decorators.csrf import ensure_csrf_cookie
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_POST, require_GET
 from rest_framework import generics
 from rest_framework.decorators import permission_classes
 
 from gameboard.forms import AddRoundForm, EditForm, AddGameForm
 from gameboard.helpers.import_helper import ImportScores, ExportScores
-from gameboard.models import Player, Round, Game, PlayerRank
+from gameboard.models import Player, Round, Game, PlayerRank, Tournament
 from gameboard.permissions import IsAuthenticatedOrCreate
 from gameboard.queries.find import find_games, find_players_in_group, find_groups, find_player_activity_log, \
     find_player_monthly_log, find_statistic, find_favorite_game, find_win_percentage, find_average_placement, \
@@ -21,7 +21,7 @@ from gameboard.queries.find import find_games, find_players_in_group, find_group
 from gameboard.queries.generate import favorite_games
 from gameboard.queries.helpers import clear_cache, get_cache
 from gameboard.queries.search import search_games_by_group, find_oldest_date
-from gameboard.serializers import SignUpSerializer
+from gameboard.serializers import SignUpSerializer, GroupSerializer
 from gameboard.utils import get_user_info, get_user_info_by_username
 import datetime
 
@@ -373,6 +373,107 @@ class SignUp(generics.CreateAPIView):
     serializer_class = SignUpSerializer
     permission_classes = [IsAuthenticatedOrCreate]
 
+def tournament_info(request, pk):
+    # TODO check that we can access this stuff
+    tournament_query = Tournament.objects.filter(pk=pk)
+    if len(tournament_query) > 0:
+        # Get basic tournament info
+        tournament = tournament_query.first()
+        bracket = tournament.bracket
+
+        # For every team, get their information
+        bracket_teams = []
+        for team in bracket.teams.all():
+            # Gather all player info
+            team_players = []
+            for team_player in team.players.all():
+                team_players.append({
+                    'pk': team_player.pk,
+                    'username': team_player.username,
+                })
+
+            bracket_teams.append({
+                'pk': team.pk,
+                'name': team.name,
+                'color': team.color,
+                'players': team_players,
+            })
+
+        # For every match, gather information
+        bracket_rounds = []
+        for match in bracket.rounds.all():
+            game_round = match.round
+
+            # Gather round info
+            round_ranks = []
+            for player_rank in game_round.players.all():
+                round_ranks.append({
+                    'pk': player_rank.pk,
+                    'player': {
+                        'pk': player_rank.player.pk,
+                        'username': player_rank.player.username,
+                    },
+                    'rank': player_rank.rank,
+                    'score': player_rank.score,
+                })
+
+            bracket_rounds.append({
+                'pk': match.pk,
+                'match': match.match,
+                'round': {
+                    'pk': game_round.pk,
+                    'game': {
+                        'pk': game_round.game.pk,
+                        'name': game_round.game.name,
+                    },
+                    'date': game_round.date,
+                    'players': round_ranks,
+                }
+            })
+
+        # Append it all to the return object
+        data = {
+            'detail': 'Success',
+            'tournament': {
+                'pk': tournament.pk,
+                'name': tournament.name,
+                'group': tournament.group.pk,
+                'bracket': {
+                    'pk': bracket.pk,
+                    'type': bracket.type,
+                    'teams': bracket_teams,
+                    'rounds': bracket_rounds,
+                }
+            }
+        }
+        return JsonResponse(data)
+    return JsonResponse(
+        {"detail": "Invalid identifier"},
+        status=401,
+    )
+
+@require_GET
+def player_info(request):
+    if request.user.is_authenticated:
+        print(request.user)
+        group_serializer = GroupSerializer(request.user.primary_group, context={"request": request})
+        data = {
+            "detail": "Success",
+            "playerPk": request.user.pk,
+            "groupPk": group_serializer.data['pk'],
+            "groupName": group_serializer.data['name'],
+            "groupImageUrl": group_serializer.data['group_picture'],
+        }
+    else:
+        data = {
+            "detail": "Failure",
+            "playerPk": -1,
+            "groupPk": -1,
+            "groupName": '',
+            "groupImageUrl": '',
+        }
+    return JsonResponse(data)
+
 @ensure_csrf_cookie
 def set_csrf_token(request):
     """
@@ -394,10 +495,17 @@ def login_view(request):
                 "__all__": "Please enter both username and password"
             }
         }, status=400)
-    user = authenticate(username=username, password=password)
-    if user is not None:
-        login(request, user)
-        return JsonResponse({"detail": "Success", "player": user.pk})
+    gb_player = authenticate(username=username, password=password)
+    if gb_player is not None:
+        login(request, gb_player)
+        group_serializer = GroupSerializer(gb_player.primary_group, context={"request": request})
+        return JsonResponse({
+            "detail": "Success",
+            "playerPk": gb_player.pk,
+            "groupPk": gb_player.primary_group.pk,
+            "groupName": gb_player.primary_group.name,
+            "groupImageUrl": group_serializer.data['group_picture'],
+        })
     return JsonResponse(
         {"detail": "Invalid credentials"},
         status=401,

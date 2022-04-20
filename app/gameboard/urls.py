@@ -23,6 +23,8 @@ urlpatterns = [
     path('import/', import_scores, name="import"),
     path('export/', export_scores, name="export"),
 
+    path('player_info/', views.player_info, name='Player Info'),
+    path('tournament_info/<slug:pk>/', views.tournament_info, name='Tournament Info'),
 
     path('set-csrf/', views.set_csrf_token, name='Set-CSRF'),
     path('login/', views.login_view, name='Login'),
