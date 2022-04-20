@@ -23,14 +23,18 @@ urlpatterns = [
     path('import/', import_scores, name="import"),
     path('export/', export_scores, name="export"),
 
+    # Info gathering for
     path('player_info/', views.player_info, name='Player Info'),
+    path('add_round_info/', views.add_round_info, name='Add Round Info'),
     path('tournament_info/<slug:pk>/', views.tournament_info, name='Tournament Info'),
+    path('tournament_stats/<slug:pk>/', views.tournament_stats, name='Tournament Stats'),
 
+    # Post routes
+    path('add_round/', views.add_round, name='Add Round'),
+    path('add_match/', views.add_match, name='Add Round'),
+
+    # Signing in and registering urls
     path('set-csrf/', views.set_csrf_token, name='Set-CSRF'),
     path('login/', views.login_view, name='Login'),
     path('logout/', views.logout_view, name='Logout'),
-
-    # Signing in and registering urls
-    path('register/', views.SignUp.as_view()),
-    path('', include('gameboard.urls_authentication')),
 ]

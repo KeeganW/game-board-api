@@ -1,4 +1,5 @@
 import csv
+import math
 import os
 
 from django.db.models import QuerySet
@@ -119,7 +120,7 @@ class ImportScores:
                 line.insert(0, date)
                 for [player, rank, score] in ranks:
                     line_index = players.index(player) + 3
-                    line[line_index] = rank
+                    line[line_index] = int(math.floor(float(rank)))
                     line[line_index + 1] = score
                 f_write.writerow(line)
 
