@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from gameboard.models import Player, Game, Group, PlayerRank, Round, BracketRound, Team, Bracket, Tournament
+from gameboard.models import Player, Game, Group, PlayerRank, Round, BracketMatch, Team, Bracket, Tournament
 
 
 class SignUpSerializer(serializers.ModelSerializer):
@@ -58,9 +58,9 @@ class RoundSerializer(serializers.ModelSerializer):
         read_only_fields = ['pk']
 
 
-class BracketRoundSerializer(serializers.ModelSerializer):
+class BracketMatchSerializer(serializers.ModelSerializer):
     class Meta:
-        model = BracketRound
+        model = BracketMatch
         fields = ['pk', 'match', 'round']
         read_only_fields = ['pk']
 
@@ -75,7 +75,7 @@ class TeamSerializer(serializers.ModelSerializer):
 class BracketSerializer(serializers.ModelSerializer):
     class Meta:
         model = Bracket
-        fields = ['pk', 'type', 'rounds', 'teams']
+        fields = ['pk', 'type', 'matches', 'teams']
         read_only_fields = ['pk']
 
 

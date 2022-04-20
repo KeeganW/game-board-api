@@ -6,7 +6,7 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_POST, require_GET
 
 from gameboard.helpers.import_helper import ImportScores, ExportScores
-from gameboard.models import Player, Round, Game, PlayerRank, Tournament, Group, BracketRound
+from gameboard.models import Player, Round, Game, PlayerRank, Tournament, BracketMatch
 from gameboard.serializers import GroupSerializer
 
 
@@ -19,7 +19,7 @@ def import_scores(request):
     """
     ImportScores()
 
-    return 'Imported'
+    return JsonResponse({"detail": "Success"})
 
 
 def export_scores(request):
@@ -31,7 +31,7 @@ def export_scores(request):
     """
     ExportScores()
 
-    return 'Exported'
+    return JsonResponse({"detail": "Success"})
 
 
 @require_GET
@@ -60,11 +60,15 @@ def tournament_stats(request, pk):
                 team_by_players[team_player.pk] = team_name
 
         # Go through all matches in bracket, find each player that played, find their associated team, and add ranking
-        for match in tournament.bracket.rounds.all():
+        for match in tournament.bracket.matches.all():
             for player_rank in match.round.players.all():
-                players_team = team_by_players[player_rank.player.pk]
-                if players_team is not None and player_rank.rank is not None:
-                    scores_by_team[players_team] += scoring[player_rank.rank]
+                try:
+                    players_team = team_by_players[player_rank.player.pk]
+                    if players_team is not None and player_rank.rank is not None:
+                        scores_by_team[players_team] += scoring[player_rank.rank]
+                except KeyError:
+                    # Player doesn't have a team
+                    pass
 
         # Get current weighted scores
         # TODO ask kevin how this is calculated
@@ -92,7 +96,7 @@ def add_match(request):
         }, status=400)
 
     round = Round.objects.filter(pk=round_pk).first()
-    match = BracketRound(match=match, round=round)
+    match = BracketMatch(match=match, round=round)
     match.save()
     tournament = Tournament.objects.filter(pk=tournament_pk).first()
     tournament.bracket.rounds.add(match)
@@ -212,8 +216,8 @@ def tournament_info(request, pk):
             })
 
         # For every match, gather information
-        bracket_rounds = []
-        for match in bracket.rounds.all():
+        bracket_matches = []
+        for match in bracket.matches.all():
             game_round = match.round
 
             # Gather round info
@@ -229,7 +233,7 @@ def tournament_info(request, pk):
                     'score': player_rank.score,
                 })
 
-            bracket_rounds.append({
+            bracket_matches.append({
                 'pk': match.pk,
                 'match': match.match,
                 'round': {
@@ -254,7 +258,7 @@ def tournament_info(request, pk):
                     'pk': bracket.pk,
                     'type': bracket.type,
                     'teams': bracket_teams,
-                    'rounds': bracket_rounds,
+                    'matches': bracket_matches,
                 }
             }
         }

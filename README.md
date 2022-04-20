@@ -5,11 +5,13 @@ Game board is an application for tracking games played with your friend groups, 
 In order to run this application, follow the following directions to run the game on your local machine. This assumes you have [docker](https://docs.docker.com/get-docker/) installed.
 
 Run docker (note, you may need to run this twice after the database is made after initial run.)
-- `docker-compose up -d`
+- `docker-compose build`
+- `docker-compose up -d db  # note, wait for this to finish before bringing up api`
+- `docker-compose up -d api`
 
 ## First Time Setup
 Note, you will need to create the django migrations for the system to work
-- `docker exec -it game-board-web-1 python manage.py makemigrations gameboard && docker exec -it game-board-web-1 python manage.py migrate --run-syncdb`
+- `docker exec -it game-board-api-api-1 python manage.py makemigrations gameboard && docker exec -it game-board-api-api-1 python manage.py migrate --run-syncdb`
 
 ## Running the website
 1. Run the web server.

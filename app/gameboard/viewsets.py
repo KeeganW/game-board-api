@@ -1,10 +1,11 @@
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
 
-from gameboard.models import Player, Round, Game, Group, PlayerRank, BracketRound, Team, Bracket, Tournament
+from gameboard.models import Player, Round, Game, Group, PlayerRank, Team, Bracket, Tournament, \
+    BracketMatch
 from gameboard.serializers import GroupSerializer, PlayerSerializer, GameSerializer, \
-    PlayerRankSerializer, RoundSerializer, BracketRoundSerializer, TeamSerializer, BracketSerializer, \
-    TournamentSerializer
+    PlayerRankSerializer, RoundSerializer, TeamSerializer, BracketSerializer, \
+    TournamentSerializer, BracketMatchSerializer
 
 
 class PlayerViewSet(viewsets.ModelViewSet):
@@ -52,12 +53,12 @@ class RoundViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
 
-class BracketRoundViewSet(viewsets.ModelViewSet):
+class BracketMatchViewSet(viewsets.ModelViewSet):
     """
     API endpoint that allows groups to be viewed or edited.
     """
-    queryset = BracketRound.objects.all()
-    serializer_class = BracketRoundSerializer
+    queryset = BracketMatch.objects.all()
+    serializer_class = BracketMatchSerializer
     permission_classes = [IsAuthenticated]
 
 
